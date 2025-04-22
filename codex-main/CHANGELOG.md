@@ -16,7 +16,8 @@
 ### 🧪 Tests & Tooling
 
 - Added `debugLog()` helper and regression test `headless-debug.test.ts`
-- Fixed cancel/terminate memory leak (heap now < 2 GB)
+- Fixed memory leak in `AgentLoop.cancel()` (heap stays flat after many cancels)
+- Added regression test to verify no memory growth from agent cancellation
 - Switched Vitest to per‑file isolation & single‑thread execution; full
   test‑suite now peaks at < 500 MB, eliminating CI OOM crashes (#M1.1e)
 - Pinned Vitest to v1.5.2 for compatibility and stability
