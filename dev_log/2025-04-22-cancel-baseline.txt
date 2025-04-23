@@ -1,0 +1,300 @@
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
+[HEADLESS-DEBUG] STAGE message
+[HEADLESS-DEBUG] tools → [ 'shell' ]
+[HEADLESS-DEBUG] FLUSH 1
+[DEBUG_CANCEL] active AgentLoops = 1
+[HEADLESS-DEBUG] [DEBUG_CANCEL] gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG_CANCEL] active AgentLoops = 0
