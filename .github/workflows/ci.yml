@@ -24,6 +24,11 @@ jobs:
       - name: Enable pnpm via Corepack
         run: corepack enable pnpm
 
+      - name: Check pnpm availability
+        run: |
+          which pnpm
+          pnpm --version
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -33,4 +38,4 @@ jobs:
 
       # Optional: ensure the project still builds
       - name: Build package
-        run: pnpm run build --if-present 
+        run: pnpm run build --if-present
