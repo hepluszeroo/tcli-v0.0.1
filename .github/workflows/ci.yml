@@ -29,10 +29,13 @@ jobs:
           pnpm --version
 
       - name: Install dependencies
-        run: pnpm -r install --frozen-lockfile
+        working-directory: codex-main/codex-cli
+        run: pnpm install --frozen-lockfile
 
-      - name: Run tests (codex-cli only)
-        run: pnpm --filter codex-cli vitest run --pool=threads
+      - name: Run tests
+        working-directory: codex-main/codex-cli
+        run: pnpm vitest run --pool=threads
 
       - name: Build package
-        run: pnpm --filter codex-cli run build --if-present
+        working-directory: codex-main/codex-cli
+        run: pnpm run build --if-present
