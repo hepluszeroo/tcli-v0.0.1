@@ -1,7 +1,9 @@
 import { defineConfig } from 'vitest/config';
 import { resolve } from 'node:path';
+import tsconfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig({
+  plugins: [tsconfigPaths()],
   test: {
     // Run each test file in its own context so global state & module cache are
     // cleared automatically between files – this is the main lever to stop
@@ -22,8 +24,10 @@ export default defineConfig({
     mockReset: true,
   },
   resolve: {
+    // The tsconfigPaths plugin now handles path aliases based on tsconfig.json
+    // This explicit configuration is kept for compatibility with older tools
     alias: {
-      src: resolve(__dirname, 'src'),
+      '@': resolve(__dirname, 'src'),
     },
   },
 }); 
