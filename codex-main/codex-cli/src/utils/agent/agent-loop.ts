@@ -134,16 +134,46 @@ export class AgentLoop {
 
   /** Active AgentLoop instance counter (updated in ctor & terminate) */
   private static activeCount = 0;
+  /** Total AgentLoop instances ever created - for leak debugging */
+  private static totalCreated = 0;
+  /** Total AgentLoop instances terminated - for leak debugging */
+  private static totalTerminated = 0;
+  /** Memory footprint at intervals - for leak debugging */
+  private static lastMemory: {heapUsed: number, time: number} = {heapUsed: 0, time: 0};
 
   private static bump(delta: number): void {
     AgentLoop.activeCount += delta;
+    
+    if (delta > 0) {
+      AgentLoop.totalCreated += delta;
+    } else {
+      AgentLoop.totalTerminated += Math.abs(delta);
+    }
 
     if (AgentLoop.DEBUG_MODE) {
       // Keep lightweight – only emit when count actually changes so logs stay
       // readable in large test loops.
+      // Log memory stats every 10 instances or when explicitly requested
+      const shouldLogMemory = (AgentLoop.activeCount % 10 === 0) || 
+                              (AgentLoop.DEBUG_TERMINATE_MODE && delta < 0);
+      
+      const now = Date.now();
+      const memStats = shouldLogMemory ? process.memoryUsage() : null;
+      const timeDelta = shouldLogMemory ? now - AgentLoop.lastMemory.time : 0;
+      const memDelta = shouldLogMemory ? 
+        (memStats!.heapUsed - AgentLoop.lastMemory.heapUsed) / (1024 * 1024) : 0;
+      
+      if (shouldLogMemory) {
+        AgentLoop.lastMemory = {
+          heapUsed: memStats!.heapUsed,
+          time: now
+        };
+      }
+      
       // eslint-disable-next-line no-console
       console.log(
-        `[DEBUG] active AgentLoops = ${AgentLoop.activeCount}`,
+        `[DEBUG] active AgentLoops = ${AgentLoop.activeCount} (total: ${AgentLoop.totalCreated}, terminated: ${AgentLoop.totalTerminated})` +
+        (shouldLogMemory ? `, heap: ${(memStats!.heapUsed / 1024 / 1024).toFixed(2)}MB (Δ: ${memDelta.toFixed(2)}MB in ${timeDelta}ms)` : '')
       );
     }
   }
@@ -246,6 +276,9 @@ export class AgentLoop {
    */
   public terminate(): void {
     if (this.terminated) {
+      if (AgentLoop.DEBUG_TERMINATE_MODE) {
+        debugLog(`[DEBUG_TERMINATE] terminate() called on already terminated instance (id=${this.sessionId})`);
+      }
       return;
     }
     
@@ -253,30 +286,62 @@ export class AgentLoop {
       // Count resources before cleanup
       const abortL = (this.execAbortController?.signal as any)?.listenerCount?.('abort') ?? 0;
       const hardAbortL = (this.hardAbort?.signal as any)?.listenerCount?.('abort') ?? 0;
+      const activeStreamRef = this.currentStream ? 'present' : 'null';
+      const onItemType = typeof this.onItem;
+      const onLoadingType = typeof this.onLoading;
+      const onLastResponseIdType = typeof this.onLastResponseId;
+      
       debugLog(
-        `[DEBUG_TERMINATE] pre-cleanup: gen=${this.generation} pendingAborts=${this.pendingAborts.size} ` +
-        `abortListeners=${abortL} hardAbortListeners=${hardAbortL} deliveryTimers=${this.deliveryTimers.size}`,
+        `[DEBUG_TERMINATE] pre-cleanup (id=${this.sessionId}): gen=${this.generation} pendingAborts=${this.pendingAborts.size} ` +
+        `abortListeners=${abortL} hardAbortListeners=${hardAbortL} deliveryTimers=${this.deliveryTimers.size} ` +
+        `currentStream=${activeStreamRef} callbacks={onItem:${onItemType}, onLoading:${onLoadingType}, ` +
+        `onLastResponseId:${onLastResponseIdType}}`,
       );
     }
     
     this.terminated = true;
 
+    // First clean up any pending timers
     if (this.flushTimer) {
       clearTimeout(this.flushTimer);
       this.flushTimer = undefined;
     }
+    
+    // Abort any running operations
+    if (this.hardAbort) {
+      try {
+        this.hardAbort.abort();
+      } catch (e) {
+        if (AgentLoop.DEBUG_TERMINATE_MODE) {
+          debugLog(`[DEBUG_TERMINATE] Error during hardAbort.abort(): ${e}`);
+        }
+      }
+    }
 
-    this.hardAbort.abort();
-
+    // Call cancel to clean up streams, timers, and pending operations
     this.cancel();
 
+    // Additional cleanup for terminate
+    // Clear callback references to avoid retaining closures
+    if (AgentLoop.DEBUG_TERMINATE_MODE) {
+      debugLog(`[DEBUG_TERMINATE] Clearing callback references`);
+    }
+    // Clear reference-holding callbacks to allow GC
+    this.onItem = () => {};
+    this.onLoading = () => {};
+    this.onLastResponseId = () => {};
+    
+    // Clear the OpenAI client reference
+    (this.oai as any) = null;
+    
     if (AgentLoop.DEBUG_TERMINATE_MODE) {
       // Count resources after cleanup
       const abortL = (this.execAbortController?.signal as any)?.listenerCount?.('abort') ?? 0;
       const hardAbortL = (this.hardAbort?.signal as any)?.listenerCount?.('abort') ?? 0;
       debugLog(
-        `[DEBUG_TERMINATE] post-cleanup: gen=${this.generation} pendingAborts=${this.pendingAborts.size} ` +
-        `abortListeners=${abortL} hardAbortListeners=${hardAbortL} deliveryTimers=${this.deliveryTimers.size}`,
+        `[DEBUG_TERMINATE] post-cleanup (id=${this.sessionId}): gen=${this.generation} pendingAborts=${this.pendingAborts.size} ` +
+        `abortListeners=${abortL} hardAbortListeners=${hardAbortL} deliveryTimers=${this.deliveryTimers.size} ` +
+        `callbacks cleared, oai reference cleared`,
       );
     }
 
@@ -376,6 +441,9 @@ export class AgentLoop {
 
     try {
       if (this.terminated) {
+        if (AgentLoop.DEBUG_TERMINATE_MODE) {
+          debugLog(`[DEBUG_TERMINATE] run() called on terminated instance (id=${this.sessionId})`);
+        }
         throw new Error("AgentLoop has been terminated");
       }
       // Record when we start "thinking" so we can report accurate elapsed time.

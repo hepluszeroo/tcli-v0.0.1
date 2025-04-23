@@ -109,8 +109,21 @@ test('AgentLoop.terminate does not grow heap', async () => {
     },
   ] as any;
 
-  // Run 50 terminate cycles (enough to detect leaks)
-  for (let i = 0; i < 50; i++) {
+  // Track heap at intervals
+  const memorySnapshots: {iteration: number, heap: number}[] = [];
+  const takeSnapshot = (iteration: number) => {
+    forceGC();
+    const heap = process.memoryUsage().heapUsed;
+    memorySnapshots.push({iteration, heap});
+    return heap;
+  };
+
+  // Initial snapshot
+  takeSnapshot(0);
+  
+  // Run 100 terminate cycles (enough to detect leaks)
+  const ITERATIONS = 100;
+  for (let i = 0; i < ITERATIONS; i++) {
     const loop = createMinimalAgentLoop();
     // Don't await the run promise fully - just start it
     const runPromise = loop.run(userMsg);
@@ -119,6 +132,11 @@ test('AgentLoop.terminate does not grow heap', async () => {
     loop.terminate();
     // Swallow any errors from the terminated promise
     await runPromise.catch(() => {});
+    
+    // Take snapshots at intervals
+    if (i % 20 === 19 || i === ITERATIONS - 1) {
+      takeSnapshot(i + 1);
+    }
   }
 
   // Force cleanup
@@ -132,9 +150,19 @@ test('AgentLoop.terminate does not grow heap', async () => {
   console.log(`Delta: ${((after - before) / 1024 / 1024).toFixed(2)} MB`);
   console.log(`Warning listener delta: ${finalWarningCount - initialWarningCount}`);
   
+  // Print memory growth pattern
+  console.log('Memory growth pattern:');
+  for (let i = 1; i < memorySnapshots.length; i++) {
+    const prev = memorySnapshots[i-1];
+    const curr = memorySnapshots[i];
+    const delta = (curr.heap - prev.heap) / (1024 * 1024);
+    const perIteration = delta / (curr.iteration - prev.iteration);
+    console.log(`  Iterations ${prev.iteration}-${curr.iteration}: +${delta.toFixed(2)}MB total, ${perIteration.toFixed(4)}MB per iteration`);
+  }
+  
   // Less than 5MB growth is acceptable
   expect(after - before).toBeLessThan(5 * 1024 * 1024);
   
   // Ensure no new warning listeners were added
   expect(finalWarningCount).toBe(initialWarningCount);
-}, 10000);
+}, 20000);
