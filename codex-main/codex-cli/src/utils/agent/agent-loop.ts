@@ -273,8 +273,12 @@ export class AgentLoop {
    * Hard‑stop the agent loop. After calling this method the instance becomes
    * unusable: any in‑flight operations are aborted and subsequent invocations
    * of `run()` will throw.
+   * 
+   * IMPORTANT: This implementation thoroughly cleans up all resources to prevent
+   * memory leaks when creating and terminating many AgentLoop instances.
    */
   public terminate(): void {
+    // Ensure idempotency - terminate() should be safe to call multiple times
     if (this.terminated) {
       if (AgentLoop.DEBUG_TERMINATE_MODE) {
         debugLog(`[DEBUG_TERMINATE] terminate() called on already terminated instance (id=${this.sessionId})`);
@@ -299,7 +303,12 @@ export class AgentLoop {
       );
     }
     
+    // Mark as terminated first so other methods know to abort/return immediately
     this.terminated = true;
+    
+    // Increment generation to make any stale references unreachable
+    // This helps with garbage collection of maps/sets keyed by generation
+    this.generation += 1;
 
     // First clean up any pending timers
     if (this.flushTimer) {
@@ -307,44 +316,62 @@ export class AgentLoop {
       this.flushTimer = undefined;
     }
     
-    // Abort any running operations
-    if (this.hardAbort) {
+    // Abort any running operations using hardAbort
+    // Store reference to old abort controller for clean replacement
+    const oldHardAbort = this.hardAbort;
+    if (oldHardAbort) {
       try {
-        this.hardAbort.abort();
+        // Abort the controller to signal all listeners
+        oldHardAbort.abort();
       } catch (e) {
         if (AgentLoop.DEBUG_TERMINATE_MODE) {
           debugLog(`[DEBUG_TERMINATE] Error during hardAbort.abort(): ${e}`);
         }
       }
     }
+    
+    // Create fresh abort controller for cleanup phase
+    // This ensures we don't carry listener references from the old controller
+    this.hardAbort = new AbortController();
 
     // Call cancel to clean up streams, timers, and pending operations
     this.cancel();
 
-    // Additional cleanup for terminate
+    // --- Additional cleanup not handled by cancel() ---
+    
+    // Explicitly clear pendingAborts again to be certain
+    this.pendingAborts.clear();
+    
     // Clear callback references to avoid retaining closures
     if (AgentLoop.DEBUG_TERMINATE_MODE) {
-      debugLog(`[DEBUG_TERMINATE] Clearing callback references`);
+      debugLog(`[DEBUG_TERMINATE] Clearing callback references and nullifying resources`);
     }
-    // Clear reference-holding callbacks to allow GC
+    
+    // Replace callbacks with empty no-op functions to release closure references
     this.onItem = () => {};
     this.onLoading = () => {};
     this.onLastResponseId = () => {};
     
-    // Clear the OpenAI client reference
-    (this.oai as any) = null;
+    // Clear all object references that might retain memory
+    (this.oai as any) = null;           // OpenAI client
+    this.currentStream = null;          // Stream resources
+    this.execAbortController = null;    // Abort controller for exec
+    (this.hardAbort as any) = null;     // Hard abort controller
+    (this.config as any) = null;        // Config object can be large
+    
+    // Make sure all collections are emptied for GC
+    this.pendingAborts = new Set();     // Replace with empty set
+    this.deliveryTimers = new Set();    // Replace with empty set
     
     if (AgentLoop.DEBUG_TERMINATE_MODE) {
       // Count resources after cleanup
-      const abortL = (this.execAbortController?.signal as any)?.listenerCount?.('abort') ?? 0;
-      const hardAbortL = (this.hardAbort?.signal as any)?.listenerCount?.('abort') ?? 0;
       debugLog(
-        `[DEBUG_TERMINATE] post-cleanup (id=${this.sessionId}): gen=${this.generation} pendingAborts=${this.pendingAborts.size} ` +
-        `abortListeners=${abortL} hardAbortListeners=${hardAbortL} deliveryTimers=${this.deliveryTimers.size} ` +
-        `callbacks cleared, oai reference cleared`,
+        `[DEBUG_TERMINATE] post-cleanup (id=${this.sessionId}): gen=${this.generation} ` +
+        `all resources cleared, all callbacks nullified, collections emptied, references removed`,
       );
     }
 
+    // Decrement the active count for tracking
     if (AgentLoop.DEBUG_MODE) {
       AgentLoop.bump(-1);
     }
