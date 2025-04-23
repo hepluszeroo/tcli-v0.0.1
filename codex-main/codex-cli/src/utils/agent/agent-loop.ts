@@ -118,10 +118,19 @@ export class AgentLoop {
    *   • `AbortSignal` listeners pile up
    * ------------------------------------------------------------------ */
 
-  /** Whether verbose cancel/terminate diagnostics are enabled */
-  private static readonly DEBUG_MODE =
+  /** Whether verbose cancel diagnostics are enabled */
+  private static readonly DEBUG_CANCEL_MODE =
     process.env["DEBUG_CANCEL"] === "1" ||
     process.env["DEBUG_CANCEL"]?.toLowerCase?.() === "true";
+    
+  /** Whether verbose terminate diagnostics are enabled */
+  private static readonly DEBUG_TERMINATE_MODE =
+    process.env["DEBUG_TERMINATE"] === "1" ||
+    process.env["DEBUG_TERMINATE"]?.toLowerCase?.() === "true";
+    
+  /** Whether any debug mode is enabled */
+  private static readonly DEBUG_MODE =
+    AgentLoop.DEBUG_CANCEL_MODE || AgentLoop.DEBUG_TERMINATE_MODE;
 
   /** Active AgentLoop instance counter (updated in ctor & terminate) */
   private static activeCount = 0;
@@ -134,7 +143,7 @@ export class AgentLoop {
       // readable in large test loops.
       // eslint-disable-next-line no-console
       console.log(
-        `[DEBUG_CANCEL] active AgentLoops = ${AgentLoop.activeCount}`,
+        `[DEBUG] active AgentLoops = ${AgentLoop.activeCount}`,
       );
     }
   }
@@ -191,7 +200,7 @@ export class AgentLoop {
     }
 
     // --- DEBUG hooks --------------------------------------------------
-    if (AgentLoop.DEBUG_MODE) {
+    if (AgentLoop.DEBUG_CANCEL_MODE) {
       // count current 'abort' listeners on the execAbortController
       const abortL =
         // listenerCount exists on AbortSignal in Node ≥ 20
@@ -239,6 +248,17 @@ export class AgentLoop {
     if (this.terminated) {
       return;
     }
+    
+    if (AgentLoop.DEBUG_TERMINATE_MODE) {
+      // Count resources before cleanup
+      const abortL = (this.execAbortController?.signal as any)?.listenerCount?.('abort') ?? 0;
+      const hardAbortL = (this.hardAbort?.signal as any)?.listenerCount?.('abort') ?? 0;
+      debugLog(
+        `[DEBUG_TERMINATE] pre-cleanup: gen=${this.generation} pendingAborts=${this.pendingAborts.size} ` +
+        `abortListeners=${abortL} hardAbortListeners=${hardAbortL} deliveryTimers=${this.deliveryTimers.size}`,
+      );
+    }
+    
     this.terminated = true;
 
     if (this.flushTimer) {
@@ -249,6 +269,16 @@ export class AgentLoop {
     this.hardAbort.abort();
 
     this.cancel();
+
+    if (AgentLoop.DEBUG_TERMINATE_MODE) {
+      // Count resources after cleanup
+      const abortL = (this.execAbortController?.signal as any)?.listenerCount?.('abort') ?? 0;
+      const hardAbortL = (this.hardAbort?.signal as any)?.listenerCount?.('abort') ?? 0;
+      debugLog(
+        `[DEBUG_TERMINATE] post-cleanup: gen=${this.generation} pendingAborts=${this.pendingAborts.size} ` +
+        `abortListeners=${abortL} hardAbortListeners=${hardAbortL} deliveryTimers=${this.deliveryTimers.size}`,
+      );
+    }
 
     if (AgentLoop.DEBUG_MODE) {
       AgentLoop.bump(-1);
@@ -326,6 +356,10 @@ export class AgentLoop {
       () => this.execAbortController?.abort(),
       { once: true },
     );
+    
+    if (AgentLoop.DEBUG_MODE) {
+      AgentLoop.bump(1);
+    }
   }
 
   public async run(

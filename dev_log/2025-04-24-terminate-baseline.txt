@@ -1,0 +1,15 @@
+# Terminate leak baseline (50x iterations)
+# Command: DEBUG_TERMINATE=1 node --expose-gc node_modules/.bin/vitest run tests/agent-terminate.leak.test.ts --run 50
+
+Initial heap measurements:
+- Initial heap: XXX MB
+- Initial warning listeners: XXX
+
+After 50 terminate cycles:
+- Final heap: XXX MB 
+- Final warning listeners: XXX
+- Delta: XXX MB
+
+Test result: XXX (pass/fail)
+
+# Note: This is a placeholder that will be updated with actual measurements
