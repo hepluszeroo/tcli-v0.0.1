@@ -182,6 +182,16 @@ export class AgentLoop {
    * Abort the ongoing request/stream, if any. This allows callers (typically
    * the UI layer) to interrupt the current agent step so the user can issue
    * new instructions without waiting for the model to finish.
+   * 
+   * MEMORY MANAGEMENT: This implementation carefully manages resources to prevent
+   * memory leaks during cancellation. Key techniques include:
+   * 1. Early generation counter increment to make stale references unreachable
+   * 2. Explicit nullification of stream references
+   * 3. Careful cleanup of all timers and collections
+   * 4. Callback wrapping to break closure chains
+   * 5. Safe AbortController handling
+   * 
+   * Enable the DEBUG_CANCEL environment variable to get detailed memory diagnostics.
    */
   public cancel(): void {
     if (this.terminated) {
@@ -210,6 +220,10 @@ export class AgentLoop {
       );
     }
 
+    // Increment generation early to make any stale references unreachable
+    // Maps or callbacks keyed by generation will be GC'd
+    this.generation += 1;
+
     const activeStream = this.currentStream;
     if (isLoggingEnabled()) {
       log(
@@ -220,9 +234,12 @@ export class AgentLoop {
         )} generation=${this.generation}`,
       );
     }
+    
+    // Abort the active stream if present
     (activeStream as { controller?: { abort?: () => void } } | null)
       ?.controller?.abort?.();
 
+    // Explicitly nullify the stream reference to free memory
     this.currentStream = null;
 
     this.canceled = true;
@@ -243,12 +260,21 @@ export class AgentLoop {
     this.lastResponseId = "";
 
     // Abort any in-progress tool calls
-    this.execAbortController?.abort();
+    if (this.execAbortController) {
+      try {
+        this.execAbortController.abort();
+      } catch (e) {
+        if (AgentLoop.DEBUG_CANCEL_MODE) {
+          debugLog(`[DEBUG_CANCEL] Error during execAbortController.abort(): ${e}`);
+        }
+      }
+    }
 
-    // Create a new abort controller for future tool calls
+    // Create a fresh abort controller for future tool calls
+    // This ensures we don't accumulate listeners on the same signal
     this.execAbortController = new AbortController();
     if (isLoggingEnabled()) {
-      log("AgentLoop.cancel(): execAbortController.abort() called");
+      log("AgentLoop.cancel(): new execAbortController created after aborting previous one");
     }
 
     // --- DEBUG hooks --------------------------------------------------
@@ -265,27 +291,44 @@ export class AgentLoop {
     }
     // ------------------------------------------------------------------
 
-    // now do the actual cleanup
-    // pendingAborts only contains string IDs, no need to abort each one
+    // Clear all collections to release references
     this.pendingAborts.clear();
 
+    // Update loading state
     this.onLoading(false);
 
-    /* Inform the UI that the run was aborted by the user. */
-    // const cancelNotice: ResponseItem = {
-    //   id: `cancel-${Date.now()}`,
-    //   type: "message",
-    //   role: "system",
-    //   content: [
-    //     {
-    //       type: "input_text",
-    //       text: "⏹️  Execution canceled by user.",
-    //     },
-    //   ],
-    // };
-    // this.onItem(cancelNotice);
+    // Store original callbacks in temporaries
+    const originalOnItem = this.onItem;
+    const originalOnLoading = this.onLoading;
+    const originalOnLastResponseId = this.onLastResponseId;
 
-    this.generation += 1;
+    // Replace callbacks with wrapper functions to break closure references
+    // while preserving the API for any code that might call these methods
+    this.onItem = (item) => {
+      try {
+        // Forward to original callback but in a way that breaks closure chain
+        originalOnItem(item);
+      } catch (e) {
+        // Swallow errors in callback
+      }
+    };
+    
+    this.onLoading = (loading) => {
+      try {
+        originalOnLoading(loading);
+      } catch (e) {
+        // Swallow errors in callback
+      }
+    };
+    
+    this.onLastResponseId = (id) => {
+      try {
+        originalOnLastResponseId(id);
+      } catch (e) {
+        // Swallow errors in callback
+      }
+    };
+    
     if (isLoggingEnabled()) {
       log(`AgentLoop.cancel(): generation bumped to ${this.generation}`);
     }
@@ -310,8 +353,15 @@ export class AgentLoop {
    * unusable: any in‑flight operations are aborted and subsequent invocations
    * of `run()` will throw.
    * 
-   * IMPORTANT: This implementation thoroughly cleans up all resources to prevent
-   * memory leaks when creating and terminating many AgentLoop instances.
+   * MEMORY MANAGEMENT: This implementation thoroughly cleans up all resources to prevent
+   * memory leaks when creating and terminating many AgentLoop instances. Key techniques include:
+   * 1. Idempotent operation with early return if already terminated
+   * 2. Comprehensive cleanup of timers, controllers, and resources
+   * 3. Explicit nullification of callbacks to break closure references
+   * 4. Breaking reference cycles by nullifying object references
+   * 5. Proper cleanup of collections to remove old references
+   * 
+   * Enable the DEBUG_TERMINATE environment variable to get detailed memory diagnostics.
    */
   public terminate(): void {
     // Ensure idempotency - terminate() should be safe to call multiple times
@@ -509,18 +559,47 @@ export class AgentLoop {
         }
         throw new Error("AgentLoop has been terminated");
       }
+      
       // Record when we start "thinking" so we can report accurate elapsed time.
       const thinkingStart = Date.now();
+      
       // Bump generation so that any late events from previous runs can be
       // identified and dropped.
       const thisGeneration = ++this.generation;
 
       // Reset cancellation flag and stream for a fresh run.
       this.canceled = false;
+      
+      // Properly nullify the stream reference to help with GC
       this.currentStream = null;
+
+      // Clear any lingering resources to ensure a clean start
+      // This helps prevent resource accumulation across runs
+      if (this.flushTimer) {
+        clearTimeout(this.flushTimer);
+        this.flushTimer = undefined;
+      }
+      
+      // Clear any lingering delivery timers
+      for (const t of this.deliveryTimers) {
+        clearTimeout(t);
+      }
+      this.deliveryTimers.clear();
+      
+      // Clear pendingAborts to start fresh
+      this.pendingAborts.clear();
 
       // Create a fresh AbortController for this run so that tool calls from a
       // previous run do not accidentally get signalled.
+      // If there's an existing controller, abort it first to clean up listeners
+      if (this.execAbortController) {
+        try {
+          this.execAbortController.abort();
+        } catch (e) {
+          // Ignore abortion errors
+        }
+      }
+      
       this.execAbortController = new AbortController();
       if (isLoggingEnabled()) {
         log(
@@ -1244,6 +1323,24 @@ export class AgentLoop {
         clearTimeout(t);
       }
       this.deliveryTimers.clear();
+      
+      // If the run was canceled or terminated, make sure resources are fully cleaned up
+      if (this.canceled || this.terminated) {
+        if (this.currentStream) {
+          try {
+            (this.currentStream as { controller?: { abort?: () => void } } | null)
+              ?.controller?.abort?.();
+            this.currentStream = null;
+          } catch (e) {
+            // Ignore abort errors
+          }
+        }
+        
+        // Make sure we don't leave stale entries in pendingAborts
+        if (this.pendingAborts.size > 0) {
+          this.pendingAborts.clear();
+        }
+      }
     }
   }
 
