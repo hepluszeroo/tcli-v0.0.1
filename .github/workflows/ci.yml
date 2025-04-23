@@ -21,10 +21,8 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
 
-      - name: Enable Corepack & activate pnpm
-        run: |
-          corepack enable
-          corepack prepare pnpm@8 --activate
+      - name: Install pnpm globally
+        run: npm install -g pnpm@8
 
       - name: Check pnpm availability
         run: |
