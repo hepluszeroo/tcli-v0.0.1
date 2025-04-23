@@ -29,12 +29,10 @@ jobs:
           pnpm --version
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm -r install --frozen-lockfile
 
-      # Run the full test suite in threaded mode (matches local setup)
-      - name: Run tests
-        run: pnpm vitest run --pool=threads
+      - name: Run tests (codex-cli only)
+        run: pnpm --filter codex-cli vitest run --pool=threads
 
-      # Optional: ensure the project still builds
       - name: Build package
-        run: pnpm run build --if-present
+        run: pnpm --filter codex-cli run build --if-present
