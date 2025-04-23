@@ -19,7 +19,7 @@ jobs:
         with:
           # If you keep your preferred Node version in .nvmrc this picks it up; otherwise hard‑code e.g. "20".
           node-version: '20'
-          cache: 'pnpm'
+          cache: 'npm'
 
       - name: Install pnpm globally
         run: npm install -g pnpm@8
