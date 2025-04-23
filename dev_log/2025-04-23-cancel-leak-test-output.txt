@@ -1,0 +1,951 @@
+
+ RUN  v1.6.1 /Users/jialinhe/Desktop/codebase/tangent-cli-intergration/codex-main/codex-cli
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+Initial heap: 10.90 MB
+Initial warning listeners: 1
+[DEBUG] active AgentLoops = 1 (total: 1, terminated: 0)
+[DEBUG] active AgentLoops = 2 (total: 2, terminated: 0)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 1 (total: 2, terminated: 1)
+[DEBUG] active AgentLoops = 2 (total: 3, terminated: 1)
+[DEBUG] active AgentLoops = 3 (total: 4, terminated: 1)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] Completed 1 iterations
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 2 (total: 4, terminated: 2)
+[DEBUG] active AgentLoops = 3 (total: 5, terminated: 2)
+[DEBUG] active AgentLoops = 4 (total: 6, terminated: 2)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 3 (total: 6, terminated: 3)
+[DEBUG] active AgentLoops = 4 (total: 7, terminated: 3)
+[DEBUG] active AgentLoops = 5 (total: 8, terminated: 3)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 4 (total: 8, terminated: 4)
+[DEBUG] active AgentLoops = 5 (total: 9, terminated: 4)
+[DEBUG] active AgentLoops = 6 (total: 10, terminated: 4)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 5 (total: 10, terminated: 5)
+[DEBUG] active AgentLoops = 6 (total: 11, terminated: 5)
+[DEBUG] active AgentLoops = 7 (total: 12, terminated: 5)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 6 (total: 12, terminated: 6)
+[DEBUG] active AgentLoops = 7 (total: 13, terminated: 6)
+[DEBUG] active AgentLoops = 8 (total: 14, terminated: 6)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 7 (total: 14, terminated: 7)
+[DEBUG] active AgentLoops = 8 (total: 15, terminated: 7)
+[DEBUG] active AgentLoops = 9 (total: 16, terminated: 7)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 8 (total: 16, terminated: 8)
+[DEBUG] active AgentLoops = 9 (total: 17, terminated: 8)
+[DEBUG] active AgentLoops = 10 (total: 18, terminated: 8), heap: 11.62MB (Δ: 11.62MB in 1745397429488ms)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 9 (total: 18, terminated: 9)
+[DEBUG] active AgentLoops = 10 (total: 19, terminated: 9), heap: 11.67MB (Δ: 0.05MB in 4ms)
+[DEBUG] active AgentLoops = 11 (total: 20, terminated: 9)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 10 (total: 20, terminated: 10), heap: 11.72MB (Δ: 0.05MB in 5ms)
+[DEBUG] active AgentLoops = 11 (total: 21, terminated: 10)
+[DEBUG] active AgentLoops = 12 (total: 22, terminated: 10)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 11 (total: 22, terminated: 11)
+[DEBUG] active AgentLoops = 12 (total: 23, terminated: 11)
+[DEBUG] active AgentLoops = 13 (total: 24, terminated: 11)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] Completed 11 iterations
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 12 (total: 24, terminated: 12)
+[DEBUG] active AgentLoops = 13 (total: 25, terminated: 12)
+[DEBUG] active AgentLoops = 14 (total: 26, terminated: 12)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 13 (total: 26, terminated: 13)
+[DEBUG] active AgentLoops = 14 (total: 27, terminated: 13)
+[DEBUG] active AgentLoops = 15 (total: 28, terminated: 13)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 14 (total: 28, terminated: 14)
+[DEBUG] active AgentLoops = 15 (total: 29, terminated: 14)
+[DEBUG] active AgentLoops = 16 (total: 30, terminated: 14)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 15 (total: 30, terminated: 15)
+[DEBUG] active AgentLoops = 16 (total: 31, terminated: 15)
+[DEBUG] active AgentLoops = 17 (total: 32, terminated: 15)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 16 (total: 32, terminated: 16)
+[DEBUG] active AgentLoops = 17 (total: 33, terminated: 16)
+[DEBUG] active AgentLoops = 18 (total: 34, terminated: 16)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 17 (total: 34, terminated: 17)
+[DEBUG] active AgentLoops = 18 (total: 35, terminated: 17)
+[DEBUG] active AgentLoops = 19 (total: 36, terminated: 17)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 18 (total: 36, terminated: 18)
+[DEBUG] active AgentLoops = 19 (total: 37, terminated: 18)
+[DEBUG] active AgentLoops = 20 (total: 38, terminated: 18), heap: 11.65MB (Δ: -0.07MB in 50ms)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 19 (total: 38, terminated: 19)
+[DEBUG] active AgentLoops = 20 (total: 39, terminated: 19), heap: 11.68MB (Δ: 0.03MB in 5ms)
+[DEBUG] active AgentLoops = 21 (total: 40, terminated: 19)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 20 (total: 40, terminated: 20), heap: 11.73MB (Δ: 0.05MB in 6ms)
+[DEBUG] active AgentLoops = 21 (total: 41, terminated: 20)
+[DEBUG] active AgentLoops = 22 (total: 42, terminated: 20)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 21 (total: 42, terminated: 21)
+[DEBUG] active AgentLoops = 22 (total: 43, terminated: 21)
+[DEBUG] active AgentLoops = 23 (total: 44, terminated: 21)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] Completed 21 iterations
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 22 (total: 44, terminated: 22)
+[DEBUG] active AgentLoops = 23 (total: 45, terminated: 22)
+[DEBUG] active AgentLoops = 24 (total: 46, terminated: 22)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 23 (total: 46, terminated: 23)
+[DEBUG] active AgentLoops = 24 (total: 47, terminated: 23)
+[DEBUG] active AgentLoops = 25 (total: 48, terminated: 23)
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 24 (total: 48, terminated: 24)
+[DEBUG] active AgentLoops = 25 (total: 49, terminated: 24)
+[DEBUG] active AgentLoops = 26 (total: 50, terminated: 24)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 25 (total: 50, terminated: 25)
+[DEBUG] active AgentLoops = 26 (total: 51, terminated: 25)
+[DEBUG] active AgentLoops = 27 (total: 52, terminated: 25)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 26 (total: 52, terminated: 26)
+[DEBUG] active AgentLoops = 27 (total: 53, terminated: 26)
+[DEBUG] active AgentLoops = 28 (total: 54, terminated: 26)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 27 (total: 54, terminated: 27)
+[DEBUG] active AgentLoops = 28 (total: 55, terminated: 27)
+[DEBUG] active AgentLoops = 29 (total: 56, terminated: 27)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 28 (total: 56, terminated: 28)
+[DEBUG] active AgentLoops = 29 (total: 57, terminated: 28)
+[DEBUG] active AgentLoops = 30 (total: 58, terminated: 28), heap: 11.65MB (Δ: -0.08MB in 52ms)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 29 (total: 58, terminated: 29)
+[DEBUG] active AgentLoops = 30 (total: 59, terminated: 29), heap: 11.68MB (Δ: 0.03MB in 5ms)
+[DEBUG] active AgentLoops = 31 (total: 60, terminated: 29)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 30 (total: 60, terminated: 30), heap: 11.73MB (Δ: 0.04MB in 6ms)
+[DEBUG] active AgentLoops = 31 (total: 61, terminated: 30)
+[DEBUG] active AgentLoops = 32 (total: 62, terminated: 30)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 31 (total: 62, terminated: 31)
+[DEBUG] active AgentLoops = 32 (total: 63, terminated: 31)
+[DEBUG] active AgentLoops = 33 (total: 64, terminated: 31)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] Completed 31 iterations
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 32 (total: 64, terminated: 32)
+[DEBUG] active AgentLoops = 33 (total: 65, terminated: 32)
+[DEBUG] active AgentLoops = 34 (total: 66, terminated: 32)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 33 (total: 66, terminated: 33)
+[DEBUG] active AgentLoops = 34 (total: 67, terminated: 33)
+[DEBUG] active AgentLoops = 35 (total: 68, terminated: 33)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 34 (total: 68, terminated: 34)
+[DEBUG] active AgentLoops = 35 (total: 69, terminated: 34)
+[DEBUG] active AgentLoops = 36 (total: 70, terminated: 34)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 35 (total: 70, terminated: 35)
+[DEBUG] active AgentLoops = 36 (total: 71, terminated: 35)
+[DEBUG] active AgentLoops = 37 (total: 72, terminated: 35)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 36 (total: 72, terminated: 36)
+[DEBUG] active AgentLoops = 37 (total: 73, terminated: 36)
+[DEBUG] active AgentLoops = 38 (total: 74, terminated: 36)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 37 (total: 74, terminated: 37)
+[DEBUG] active AgentLoops = 38 (total: 75, terminated: 37)
+[DEBUG] active AgentLoops = 39 (total: 76, terminated: 37)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 38 (total: 76, terminated: 38)
+[DEBUG] active AgentLoops = 39 (total: 77, terminated: 38)
+[DEBUG] active AgentLoops = 40 (total: 78, terminated: 38), heap: 11.68MB (Δ: -0.05MB in 48ms)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 39 (total: 78, terminated: 39)
+[DEBUG] active AgentLoops = 40 (total: 79, terminated: 39), heap: 11.71MB (Δ: 0.03MB in 5ms)
+[DEBUG] active AgentLoops = 41 (total: 80, terminated: 39)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 40 (total: 80, terminated: 40), heap: 11.76MB (Δ: 0.04MB in 6ms)
+[DEBUG] active AgentLoops = 41 (total: 81, terminated: 40)
+[DEBUG] active AgentLoops = 42 (total: 82, terminated: 40)
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 41 (total: 82, terminated: 41)
+[DEBUG] active AgentLoops = 42 (total: 83, terminated: 41)
+[DEBUG] active AgentLoops = 43 (total: 84, terminated: 41)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] Completed 41 iterations
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 42 (total: 84, terminated: 42)
+[DEBUG] active AgentLoops = 43 (total: 85, terminated: 42)
+[DEBUG] active AgentLoops = 44 (total: 86, terminated: 42)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 43 (total: 86, terminated: 43)
+[DEBUG] active AgentLoops = 44 (total: 87, terminated: 43)
+[DEBUG] active AgentLoops = 45 (total: 88, terminated: 43)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 44 (total: 88, terminated: 44)
+[DEBUG] active AgentLoops = 45 (total: 89, terminated: 44)
+[DEBUG] active AgentLoops = 46 (total: 90, terminated: 44)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 45 (total: 90, terminated: 45)
+[DEBUG] active AgentLoops = 46 (total: 91, terminated: 45)
+[DEBUG] active AgentLoops = 47 (total: 92, terminated: 45)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 46 (total: 92, terminated: 46)
+[DEBUG] active AgentLoops = 47 (total: 93, terminated: 46)
+[DEBUG] active AgentLoops = 48 (total: 94, terminated: 46)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 47 (total: 94, terminated: 47)
+[DEBUG] active AgentLoops = 48 (total: 95, terminated: 47)
+[DEBUG] active AgentLoops = 49 (total: 96, terminated: 47)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 48 (total: 96, terminated: 48)
+[DEBUG] active AgentLoops = 49 (total: 97, terminated: 48)
+[DEBUG] active AgentLoops = 50 (total: 98, terminated: 48), heap: 11.74MB (Δ: -0.02MB in 47ms)
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 49 (total: 98, terminated: 49)
+[DEBUG] active AgentLoops = 50 (total: 99, terminated: 49), heap: 11.77MB (Δ: 0.03MB in 5ms)
+[DEBUG] active AgentLoops = 51 (total: 100, terminated: 49)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] active AgentLoops = 50 (total: 100, terminated: 50), heap: 11.81MB (Δ: 0.04MB in 6ms)
+Final heap: 11.31 MB
+Final warning listeners: 1
+Delta: 0.41 MB
+Warning listener delta: 0
+Memory growth pattern:
+  Iterations 0-10: +0.29MB total, 0.0293MB per iteration
+  Iterations 10-20: +0.03MB total, 0.0028MB per iteration
+  Iterations 20-30: +0.01MB total, 0.0014MB per iteration
+  Iterations 30-40: +0.04MB total, 0.0037MB per iteration
+  Iterations 40-50: +0.06MB total, 0.0055MB per iteration
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > AgentLoop.cancel does not grow heap
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > cancel() can be called multiple times safely
+[DEBUG] active AgentLoops = 51 (total: 101, terminated: 50)
+[DEBUG] active AgentLoops = 50 (total: 101, terminated: 51), heap: 11.48MB (Δ: -0.34MB in 8ms)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > cancel() can be called multiple times safely
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=0 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=0 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=2 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=3 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > cancel() properly resets internal state
+[DEBUG] active AgentLoops = 51 (total: 102, terminated: 51)
+[DEBUG] active AgentLoops = 52 (total: 103, terminated: 51)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > cancel() properly resets internal state
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > cancel() properly resets internal state
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=3 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > cancel() properly resets internal state
+[DEBUG] active AgentLoops = 53 (total: 104, terminated: 51)
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > cancel() properly resets internal state
+[DEBUG] active AgentLoops = 52 (total: 104, terminated: 52)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > cancel() properly resets internal state
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=3 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=3 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=4 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > stress test with multiple concurrent cancellations
+[DEBUG] active AgentLoops = 53 (total: 105, terminated: 52)
+[DEBUG] active AgentLoops = 54 (total: 106, terminated: 52)
+[DEBUG] active AgentLoops = 55 (total: 107, terminated: 52)
+[DEBUG] active AgentLoops = 56 (total: 108, terminated: 52)
+[DEBUG] active AgentLoops = 57 (total: 109, terminated: 52)
+[DEBUG] active AgentLoops = 58 (total: 110, terminated: 52)
+[DEBUG] active AgentLoops = 59 (total: 111, terminated: 52)
+[DEBUG] active AgentLoops = 60 (total: 112, terminated: 52), heap: 11.44MB (Δ: -0.04MB in 15ms)
+[DEBUG] active AgentLoops = 61 (total: 113, terminated: 52)
+[DEBUG] active AgentLoops = 62 (total: 114, terminated: 52)
+[DEBUG] active AgentLoops = 63 (total: 115, terminated: 52)
+[DEBUG] active AgentLoops = 64 (total: 116, terminated: 52)
+[DEBUG] active AgentLoops = 65 (total: 117, terminated: 52)
+[DEBUG] active AgentLoops = 66 (total: 118, terminated: 52)
+[DEBUG] active AgentLoops = 67 (total: 119, terminated: 52)
+[DEBUG] active AgentLoops = 68 (total: 120, terminated: 52)
+[DEBUG] active AgentLoops = 69 (total: 121, terminated: 52)
+[DEBUG] active AgentLoops = 70 (total: 122, terminated: 52), heap: 11.75MB (Δ: 0.31MB in 1ms)
+[DEBUG] active AgentLoops = 71 (total: 123, terminated: 52)
+[DEBUG] active AgentLoops = 72 (total: 124, terminated: 52)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > stress test with multiple concurrent cancellations
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] [DEBUG_CANCEL] run() created fresh execAbortController (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 abortListeners=0
+[DEBUG] STAGE message
+[DEBUG] tools → [] (interactive mode)
+[DEBUG] FLUSH 1
+[DEBUG] FLUSH 1
+[DEBUG] FLUSH 1
+[DEBUG] FLUSH 1
+[DEBUG] FLUSH 1
+[DEBUG] FLUSH 1
+[DEBUG] FLUSH 1
+[DEBUG] FLUSH 1
+[DEBUG] FLUSH 1
+[DEBUG] FLUSH 1
+
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > stress test with multiple concurrent cancellations
+[DEBUG] active AgentLoops = 71 (total: 124, terminated: 53)
+[DEBUG] active AgentLoops = 70 (total: 124, terminated: 54), heap: 11.70MB (Δ: -0.05MB in 9ms)
+[DEBUG] active AgentLoops = 69 (total: 124, terminated: 55)
+[DEBUG] active AgentLoops = 68 (total: 124, terminated: 56)
+[DEBUG] active AgentLoops = 67 (total: 124, terminated: 57)
+[DEBUG] active AgentLoops = 66 (total: 124, terminated: 58)
+[DEBUG] active AgentLoops = 65 (total: 124, terminated: 59)
+[DEBUG] active AgentLoops = 64 (total: 124, terminated: 60)
+[DEBUG] active AgentLoops = 63 (total: 124, terminated: 61)
+[DEBUG] active AgentLoops = 62 (total: 124, terminated: 62)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > stress test with multiple concurrent cancellations
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] pre-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=1 stream=null flushTimer=false pendingAborts=0 deliveryTimers=0 abortListeners=0 hardAbortListeners=0
+[DEBUG] [DEBUG_CANCEL] mid-cleanup gen=1 pendingAborts=0 abortListeners=0 deliveryTimers=0
+[DEBUG] [DEBUG_CANCEL] post-cleanup (id=42d7af0ea6994f1b8a5288ce6ac667b2): gen=2 pendingAborts=0 deliveryTimers=0 abortListeners=0
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+[DEBUG] [DEBUG_CANCEL] cancel() called on already terminated instance (id=42d7af0ea6994f1b8a5288ce6ac667b2)
+
+stderr | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > stress test with multiple concurrent cancellations
+<empty line>
+stdout | tests/agent-cancel.leak.test.ts > Agent cancel memory leak tests > stress test with multiple concurrent cancellations
+Memory usage after concurrent cancellation: 0.02 MB
+
+ ✓ tests/agent-cancel.leak.test.ts  (4 tests) 387ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  10:37:09
+   Duration  562ms (transform 46ms, setup 10ms, collect 46ms, tests 387ms, environment 0ms, prepare 29ms)
+

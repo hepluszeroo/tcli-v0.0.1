@@ -185,7 +185,29 @@ export class AgentLoop {
    */
   public cancel(): void {
     if (this.terminated) {
+      if (AgentLoop.DEBUG_CANCEL_MODE) {
+        debugLog(`[DEBUG_CANCEL] cancel() called on already terminated instance (id=${this.sessionId})`);
+      }
       return;
+    }
+
+    // Pre-cancellation state for debugging
+    if (AgentLoop.DEBUG_CANCEL_MODE) {
+      // Count resources before cleanup
+      const currentStreamPresent = this.currentStream !== null;
+      const flushTimerActive = !!this.flushTimer;
+      const pendingAbortsSize = this.pendingAborts.size;
+      const deliveryTimersSize = this.deliveryTimers.size;
+      const abortListenerCount = (this.execAbortController?.signal as any)?.listenerCount?.('abort') ?? 0;
+      const hardAbortListenerCount = (this.hardAbort?.signal as any)?.listenerCount?.('abort') ?? 0;
+      
+      debugLog(
+        `[DEBUG_CANCEL] pre-cleanup (id=${this.sessionId}): ` +
+        `gen=${this.generation} stream=${currentStreamPresent ? 'present' : 'null'} ` +
+        `flushTimer=${flushTimerActive} pendingAborts=${pendingAbortsSize} ` +
+        `deliveryTimers=${deliveryTimersSize} abortListeners=${abortListenerCount} ` +
+        `hardAbortListeners=${hardAbortListenerCount}`
+      );
     }
 
     const activeStream = this.currentStream;
@@ -231,13 +253,13 @@ export class AgentLoop {
 
     // --- DEBUG hooks --------------------------------------------------
     if (AgentLoop.DEBUG_CANCEL_MODE) {
-      // count current 'abort' listeners on the execAbortController
+      // count current 'abort' listeners on the execAbortController after refresh
       const abortL =
         // listenerCount exists on AbortSignal in Node ≥ 20
         (this.execAbortController?.signal as any)?.listenerCount?.('abort') ?? 0;
 
       debugLog(
-        `[DEBUG_CANCEL] gen=${this.generation} pendingAborts=${this.pendingAborts.size} ` +
+        `[DEBUG_CANCEL] mid-cleanup gen=${this.generation} pendingAborts=${this.pendingAborts.size} ` +
         `abortListeners=${abortL} deliveryTimers=${this.deliveryTimers.size}`,
       );
     }
@@ -266,6 +288,20 @@ export class AgentLoop {
     this.generation += 1;
     if (isLoggingEnabled()) {
       log(`AgentLoop.cancel(): generation bumped to ${this.generation}`);
+    }
+    
+    // Post-cancellation debug information
+    if (AgentLoop.DEBUG_CANCEL_MODE) {
+      // Additional debug info after cleanup
+      const pendingAbortsSize = this.pendingAborts.size;
+      const deliveryTimersSize = this.deliveryTimers.size;
+      const abortListenerCount = (this.execAbortController?.signal as any)?.listenerCount?.('abort') ?? 0;
+      
+      debugLog(
+        `[DEBUG_CANCEL] post-cleanup (id=${this.sessionId}): ` +
+        `gen=${this.generation} pendingAborts=${pendingAbortsSize} ` +
+        `deliveryTimers=${deliveryTimersSize} abortListeners=${abortListenerCount}`
+      );
     }
   }
 
@@ -489,6 +525,15 @@ export class AgentLoop {
       if (isLoggingEnabled()) {
         log(
           `AgentLoop.run(): new execAbortController created (${this.execAbortController.signal}) for generation ${this.generation}`,
+        );
+      }
+      
+      // Debug listener count on fresh AbortController
+      if (AgentLoop.DEBUG_CANCEL_MODE) {
+        const abortListenerCount = (this.execAbortController?.signal as any)?.listenerCount?.('abort') ?? 0;
+        debugLog(
+          `[DEBUG_CANCEL] run() created fresh execAbortController (id=${this.sessionId}): ` +
+          `gen=${this.generation} abortListeners=${abortListenerCount}`
         );
       }
       // NOTE: We no longer (re‑)attach an `abort` listener to `hardAbort` here.
