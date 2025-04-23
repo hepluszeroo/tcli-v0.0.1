@@ -1,15 +1,33 @@
 # Terminate leak baseline (50x iterations)
-# Command: DEBUG_TERMINATE=1 node --expose-gc node_modules/.bin/vitest run tests/agent-terminate.leak.test.ts --run 50
+# Command: DEBUG_TERMINATE=1 DEBUG_CANCEL=1 node --expose-gc node_modules/.bin/vitest run tests/agent-terminate.leak.test.ts --run 50
 
 Initial heap measurements:
-- Initial heap: XXX MB
-- Initial warning listeners: XXX
+- Initial heap: 10.73 MB
+- Initial warning listeners: 1
 
 After 50 terminate cycles:
-- Final heap: XXX MB 
-- Final warning listeners: XXX
-- Delta: XXX MB
+- Final heap: 11.08 MB 
+- Final warning listeners: 1
+- Delta: 0.35 MB
 
-Test result: XXX (pass/fail)
+Test result: PASS
 
-# Note: This is a placeholder that will be updated with actual measurements
+# Observations
+
+With enhanced logging, we can see:
+
+1. Memory growth is minimal (0.35 MB after 50 iterations), well below our 5 MB threshold
+2. AgentLoop count properly increments and decrements, but we see a pattern where it reaches 51 at the end (1 higher than expected)
+3. DEBUG_TERMINATE logs show:
+   - pendingAborts, abortListeners, hardAbortListeners, deliveryTimers all consistently 0 before and after cleanup
+   - No apparent resource accumulation in the terminate flow
+4. Suspicious logs show agent generation always = 1, suggesting we might need to check if generation counter is being reset properly
+
+# Next Steps for Phase 1/2 - Instrumentation & Root Cause Analysis
+
+1. Further investigate the AgentLoop counter (why we end with 51 instead of 50)
+2. Check if the currentStream or hardAbort.signal are being properly cleaned up
+3. Test with more consecutive runs to see if a small memory growth accumulates over time
+4. Conduct a more detailed codebase review of the `terminate()` method to identify any potential areas for optimization
+
+Despite the minimal memory leak, there appears to be a discrepancy with the instance counting that could be affecting GC of AgentLoop instances. The 0.35 MB growth over 50 instances suggests some objects are being retained.
