@@ -7,12 +7,10 @@ export default defineConfig({
     // cleared automatically between files – this is the main lever to stop
     // heap growth across the suite.
     isolate: true,
-    // @ts-expect-error threads is valid but maybe not in types
+    // Re-enabled multi-threading after fixing memory leaks in cancel and terminate
     threads: true,
-    // Run sequentially in the main thread – keeps peak memory even lower and
-    // avoids spawning worker threads that would require their own TypeScript
-    // program instances.
-    maxConcurrency: 1,
+    // Memory leaks in AgentLoop.cancel() and AgentLoop.terminate() have been fixed,
+    // so we can now safely run tests in parallel
     testTimeout: 30000,
     // global setup to silence MaxListeners warnings
     setupFiles: [
