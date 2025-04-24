@@ -23,15 +23,30 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'                           # LTS
-          cache: pnpm
-          cache-dependency-path: codex-main/codex-cli/pnpm-lock.yaml
+          node-version: '20'          # LTS
+          cache: ''                   # disable built-in pnpm cache; we’ll add our own
 
-      - name: Install pnpm CLI
-        run: npm install -g pnpm@8
+      # --- pnpm installation + cache ----------------------------------------
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+          run_install: false          # we install in a later step
+
+      - name: Compute pnpm store path
+        id: pnpm-cache
+        run: echo "store_path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.store_path }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+      # ----------------------------------------------------------------------
 
       - name: Install workspace dependencies
-        working-directory: codex-main                  # monorepo root
+        working-directory: codex-main          # monorepo root
         run: pnpm -r install --frozen-lockfile
 
       - name: Run tests (codex-cli only)
