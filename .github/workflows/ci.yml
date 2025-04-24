@@ -1,3 +1,4 @@
+# .github/workflows/ci.yml
 name: CI
 
 on:
@@ -10,6 +11,11 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
+    env:
+      NODE_OPTIONS: '--max-old-space-size=4096 --expose-gc'
+      DEBUG_CANCEL: '1'
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -17,25 +23,21 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          # If you keep your preferred Node version in .nvmrc this picks it up; otherwise hard‑code e.g. "22".
-          node-version: '22'
+          node-version: '20'                           # LTS
+          cache: pnpm
+          cache-dependency-path: codex-main/codex-cli/pnpm-lock.yaml
 
-      - name: Install pnpm globally
+      - name: Install pnpm CLI
         run: npm install -g pnpm@8
 
-      - name: Check pnpm availability
-        run: |
-          which pnpm
-          pnpm --version
+      - name: Install workspace dependencies
+        working-directory: codex-main                  # monorepo root
+        run: pnpm -r install --frozen-lockfile
 
-      - name: Install dependencies
-        working-directory: codex-main/codex-cli
-        run: pnpm install --no-frozen-lockfile
+      - name: Run tests (codex-cli only)
+        working-directory: codex-main
+        run: pnpm --filter codex-cli vitest run --pool=threads
 
-      - name: Run tests
-        working-directory: codex-main/codex-cli
-        run: pnpm vitest run --pool=threads
-
-      - name: Build package
-        working-directory: codex-main/codex-cli
-        run: pnpm run build --if-present
+      - name: Build codex-cli package
+        working-directory: codex-main
+        run: pnpm --filter codex-cli run build --if-present
