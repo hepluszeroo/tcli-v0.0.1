@@ -9,6 +9,9 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      NODE_OPTIONS: '--max-old-space-size=4096'
+      DEBUG_CANCEL: '1'
     timeout-minutes: 30
     steps:
       - name: Checkout repository
@@ -18,7 +21,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           # If you keep your preferred Node version in .nvmrc this picks it up; otherwise hard‑code e.g. "20".
-          node-version: '22'
+          node-version: '20'
 
       - name: Install pnpm globally
         run: npm install -g pnpm@8
@@ -28,14 +31,14 @@ jobs:
           which pnpm
           pnpm --version
 
-      - name: Install dependencies
-        working-directory: codex-main/codex-cli
-        run: pnpm install --frozen-lockfile
+      - name: Install workspace dependencies (monorepo root)
+        working-directory: codex-main
+        run: pnpm -r install --frozen-lockfile
 
-      - name: Run tests
-        working-directory: codex-main/codex-cli
-        run: pnpm vitest run --pool=threads
+      - name: Run tests (codex-cli only)
+        working-directory: codex-main
+        run: pnpm --filter codex-cli vitest run --pool=threads
 
-      - name: Build package
-        working-directory: codex-main/codex-cli
-        run: pnpm run build --if-present
+      - name: Build codex-cli package
+        working-directory: codex-main
+        run: pnpm --filter codex-cli run build --if-present
