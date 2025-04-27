@@ -1,0 +1,56 @@
+# -------------------------------------------------------------
+# Tangent Codex E2E runner – Playwright base image
+# -------------------------------------------------------------
+
+# Use the official Playwright “jammy” image (Ubuntu 22.04).  We no longer bake
+# the platform into the Dockerfile itself; if you are on an M-series Mac just
+# append  `--platform linux/amd64` to the *docker build* / *docker run* command.
+FROM mcr.microsoft.com/playwright:v1.52.0-jammy
+
+WORKDIR /repo
+
+# CI indicator + flag consumed by tests-integration/tangent.ts
+ENV CI=true
+ENV PLAYWRIGHT_IN_DOCKER=1
+
+# Install runtime libraries needed by Electron on Linux
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive \
+    apt-get install -y --no-install-recommends \
+        libx11-6 libxkbcommon0 libxcomposite1 libxdamage1 \
+        libxrandr2 libxfixes3 libdrm2 libgbm1 libasound2 \
+        libnss3 libgtk-3-0 libcups2 libxcb-shm0 && \
+    rm -rf /var/lib/apt/lists/*
+
+# -------------------------------------------------------------
+# 1️⃣  Copy repository & install dependencies
+# -------------------------------------------------------------
+
+COPY . .
+
+# Allow Electron’s postinstall script to run (pnpm 10 blocks by default)
+RUN echo "allowed-scripts=electron" >> .npmrc \
+    && corepack enable \
+    # add katex to Tangent-main package so build/index.js can copy min.css
+    && pnpm --dir Tangent-main add -Dw katex@0.16.9 --ignore-scripts=false \
+    && pnpm install --frozen-lockfile \
+    # link katex into Tangent-main/node_modules so build script can find css
+    && mkdir -p Tangent-main/node_modules \
+    && ln -s ../../node_modules/katex Tangent-main/node_modules/katex \
+    # ensure katex is present for the build script that copies css
+    # electron's postinstall may still be blocked in some pnpm / CI combos, so
+    # run the downloader in the tangent_electron workspace explicitly
+    && pnpm --filter tangent-electron exec node -e "require('electron/install.js')"
+
+# -------------------------------------------------------------
+# 2️⃣  Build the Electron bundles & install Playwright browsers
+# -------------------------------------------------------------
+
+RUN pnpm --filter tangent-electron run build \
+    && pnpm --filter tangent-electron exec playwright install --with-deps
+
+# -------------------------------------------------------------
+# 3️⃣  Execute only the Codex integration specs
+# -------------------------------------------------------------
+ENV PLAYWRIGHT_IN_DOCKER=1
+
+CMD ["pnpm","--filter","tangent_electron","exec","playwright","test","tests-integration/codex_*","--reporter=line"]
