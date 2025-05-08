@@ -106,9 +106,13 @@ test('Codex can start, emit messages in order and avoid watchdog errors', async 
     }, 500);
   }
   
-  // Wait until at least one message arrives (max 7 s to account for slower CI runners).
+  // Wait until we have both required messages (max 7 s to account for slower CI runners).
   try {
-    await window.page.waitForFunction(() => (window as any).__codexMessages.length > 0, null, {
+    await window.page.waitForFunction(() => {
+      const msgs = (window as any).__codexMessages || [];
+      return msgs.some(m => m.type === 'codex_ready') && 
+             msgs.some(m => m.type === 'status' && m.state === 'idle');
+    }, null, {
       timeout: 7000
     });
   } finally {
@@ -116,6 +120,7 @@ test('Codex can start, emit messages in order and avoid watchdog errors', async 
   }
 
   const messages = await window.page.evaluate(() => (window as any).__codexMessages)
+  console.log('[test] Received messages:', JSON.stringify(messages));
 
   // Check if we have the required messages in any order
   const hasReadyMessage = messages.some(msg => msg.type === 'codex_ready');

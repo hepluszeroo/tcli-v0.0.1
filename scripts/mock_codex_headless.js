@@ -248,6 +248,8 @@ process.stdin.on('data', chunk => {
 const heartbeatInterval = setInterval(() => {
   send(JSON.stringify({ type: 'heartbeat', timestamp: Date.now() }));
 }, 1000);
+// Make sure the interval doesn't keep Node process alive
+heartbeatInterval.unref();
 
 // Keep the process alive when there is a delay ticker. If there is no work
 // left we simply idle – the Electron parent will terminate us when needed.
@@ -255,6 +257,8 @@ const keepAliveTimer = setInterval(() => {
   // Write diagnostic marker to log file to verify process is still running
   fs.appendFileSync(logPath, `Still alive at ${new Date().toISOString()}\n`);
 }, 5000);
+// Make sure the interval doesn't keep Node process alive
+keepAliveTimer.unref();
 
 // Graceful shutdown on signals so Electron teardown can complete
 function shutdown() {

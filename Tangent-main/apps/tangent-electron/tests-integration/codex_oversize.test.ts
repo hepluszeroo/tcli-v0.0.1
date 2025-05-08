@@ -40,13 +40,16 @@ test('Oversize line triggers codex:error but stream continues', async ({ tangent
     })
   })
 
-  // Wait for at least one error and one message (max 12 s for slower CI).
+  // Wait for at least one error and specifically for the {type:"ok"} message (max 12 s for slower CI).
   await window.page.waitForFunction(() => {
     const w: any = window as any
-    return w.__codexErrors.length > 0 && w.__codexMessages.length > 0
+    return w.__codexErrors.length > 0 && 
+           w.__codexMessages.some(msg => msg.type === 'ok')
   }, null, {
     timeout: 12000
   })
+  
+  console.log('[test] Waiting completed for error and ok message')
 
   const [firstError] = await window.page.evaluate(() => (window as any).__codexErrors)
 
