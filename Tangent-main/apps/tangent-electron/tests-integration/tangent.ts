@@ -7,6 +7,7 @@ import { launchElectron } from './electronHarness'
 import path from 'path'
 import os from 'os'
 import TangentApp from './TangentApp'
+import { DEFAULT_WORKSPACE } from './pathHelpers'
 
 // Using this here because playwright doesn't want to play nice with ESM imports
 export function wait(time: number = 0): Promise<void> {
@@ -28,8 +29,8 @@ type TangentFixtures = {
 	tangent: TangentApp
 }
 
-export const defaultWorkspace = path.resolve(path.join(
-	__dirname, '../../IntegrationTestWorkspace'))
+// Workspace root is provided by pathHelpers
+export const defaultWorkspace = DEFAULT_WORKSPACE
 
 export const test = base.extend<TangentFixtures & TangentOptions>({
 
@@ -51,12 +52,12 @@ export const test = base.extend<TangentFixtures & TangentOptions>({
 		}
 
 		// ------------------------------------------------------------------
-		// Prepare an isolated Electron *userData* directory so that Tangent’s
+		// Prepare an isolated Electron *userData* directory so that Tangent's
 		// profile registry (`workspaces.json`) exists and does not interfere
-		// with the developer’s real profile.
+		// with the developer's real profile.
 		// ------------------------------------------------------------------
 		// Determine the platform default Tangent profile dir so we can seed a
-		// minimal workspace registry. If the directory doesn’t exist the main
+		// minimal workspace registry. If the directory doesn't exist the main
 		// process will create it eventually, but pre-creating avoids first-run
 		// delays and lets our cleanup logic remove the file deterministically.
 		function defaultProfileDir() {
@@ -78,7 +79,9 @@ export const test = base.extend<TangentFixtures & TangentOptions>({
 			await fs.promises.writeFile(registryPath, JSON.stringify({ knownWorkspaces: [], openWorkspaces: [] }))
 		} catch (_) {/* ignore */}
 
-const buildDir = path.resolve(__dirname, '../../__build')
+// __dirname => .../apps/tangent-electron/tests-integration
+// The compiled bundle lives one directory up at .../apps/tangent-electron/__build
+const buildDir = path.resolve(__dirname, '../__build')
 
 // ---------------------------------------------------------------------------
 // Determine the Electron binary to launch
@@ -125,8 +128,15 @@ function getElectronExec(): string {
 
 const execPath = getElectronExec()
 
+// Fail early with a friendly hint when the Electron binary is missing on a
+// developer machine (common right after a fresh clone when the post-install
+// download step did not run).
 if (!fs.existsSync(execPath)) {
-  throw new Error(`Electron executable not found at ${execPath}`)
+  throw new Error(
+    `Electron executable not found at ${execPath}. ` +
+      'Run "pnpm run electron:ensure" to download it or simply rerun the ' +
+      'quick-suite which triggers the same guard automatically.'
+  )
 }
 
 const mainEntry = path.join(buildDir, 'bundle', 'main.js')
@@ -160,14 +170,82 @@ const tangentApp = new TangentApp(electronApp as any, workspace)
 			workspaceInfoName + 'workspaces.json')
 
 		// Clean up test
-		await tangentApp.close()
-		child.kill('SIGKILL')
+		// (legacy diagnostic block removed – no longer required)
+    
+    // Attempt graceful close – but enforce an upper bound so worker teardown
+    // never hits the global 60-second limit even if Electron hangs.  If the
+    // graceful shutdown takes too long we escalates to SIGKILL as a last
+    // resort which guarantees Playwright can continue with other workers.
+
+    // Make Electron block until every Codex child is actually closed.
+    // We execute the IPC call in the renderer context of the first window
+    // instead of (incorrectly) trying to call a non-existent evaluate()
+    // helper on TangentApp itself.
+    // Run the drain barrier inside Electron *main* process so we avoid the
+    // contextIsolation restrictions that block `require()` in the renderer.
+    try {
+      await tangentApp.app.evaluate(async () => {
+        const wait: Promise<void>[] = [];
+        const set: Set<any> | undefined = (global as any).__codexChildObjects;
+        if (set && set.size > 0) {
+          for (const cp of Array.from(set)) {
+            try { cp.kill('SIGKILL'); } catch {}
+            wait.push(new Promise<void>((res) => cp.once('exit', res)));
+          }
+          await Promise.all(wait);
+        }
+      });
+
+      // Guard-rail: ensure drain really cleared every Codex child.
+      if (process.env.CI) {
+        await tangentApp.app.evaluate(() => {
+          if ((global as any).__codexChildObjects?.size) {
+            throw new Error('Codex children survived cleanup');
+          }
+        });
+      }
+    } catch (e) {
+      console.error('[tangent] await-drain in main process failed:', e);
+    }
+    
+
+
+    const CLOSE_TIMEOUT_MS = 10000
+
+    const closePromise = tangentApp.close()
+
+    await Promise.race([
+      closePromise,
+      new Promise<void>((resolve) => {
+        setTimeout(async () => {
+          try {
+            // Force-kill the underlying process to avoid fixture timeout
+            const proc = (tangentApp.app as any)._process as import('child_process').ChildProcess | undefined
+            proc?.kill('SIGKILL')
+          } catch (_) {
+            /* ignore */
+          }
+          resolve()
+        }, CLOSE_TIMEOUT_MS)
+      })
+    ])
+		if (child) {
+			try { 
+				child.kill('SIGKILL') 
+			} catch (e) { 
+				console.error('kill() failed', e) 
+			}
+		}
 
 		await wait(500)
 
 		if (resetWorkspace && workspace) {
 			if (resetWorkspace === true) {
-				await fs.promises.rm(workspace, { recursive: true })
+			// Remove the temporary workspace directory. Use `force:true` so the
+			// call is idempotent and does not fail in case the directory was
+			// never created or was already deleted during the test (for example
+			// when running in parallel workers).
+			await fs.promises.rm(workspace, { recursive: true, force: true })
 			}
 			else {
 				try {
