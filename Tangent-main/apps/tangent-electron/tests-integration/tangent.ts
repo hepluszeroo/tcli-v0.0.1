@@ -212,9 +212,8 @@ const tangentApp = new TangentApp(electronApp as any, workspace)
 
     // Explicitly quit the app via IPC to ensure proper cleanup
     try {
-      await tangentApp.app.evaluate(() => {
+      await tangentApp.app.evaluate(({ app }) => {
         console.log('[tangent] Explicitly triggering app.quit() before electronApp.close()')
-        const { app } = require('electron')
         app.quit() // triggers will-quit and allows clean exit
       })
     } catch (e) {
