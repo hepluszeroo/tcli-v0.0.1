@@ -210,7 +210,18 @@ const tangentApp = new TangentApp(electronApp as any, workspace)
     
 
 
-    const CLOSE_TIMEOUT_MS = 10000
+    // Explicitly quit the app via IPC to ensure proper cleanup
+    try {
+      await tangentApp.app.evaluate(() => {
+        console.log('[tangent] Explicitly triggering app.quit() before electronApp.close()')
+        const { app } = require('electron')
+        app.quit() // triggers will-quit and allows clean exit
+      })
+    } catch (e) {
+      console.error('[tangent] Failed to run app.quit():', e)
+    }
+    
+    const CLOSE_TIMEOUT_MS = 5000 // Reduced timeout since we're actively quitting
 
     const closePromise = tangentApp.close()
 
@@ -220,10 +231,11 @@ const tangentApp = new TangentApp(electronApp as any, workspace)
         setTimeout(async () => {
           try {
             // Force-kill the underlying process to avoid fixture timeout
+            console.log('[tangent] Close timeout reached, force-killing process')
             const proc = (tangentApp.app as any)._process as import('child_process').ChildProcess | undefined
             proc?.kill('SIGKILL')
-          } catch (_) {
-            /* ignore */
+          } catch (e) {
+            console.error('[tangent] Error during force kill:', e)
           }
           resolve()
         }, CLOSE_TIMEOUT_MS)
