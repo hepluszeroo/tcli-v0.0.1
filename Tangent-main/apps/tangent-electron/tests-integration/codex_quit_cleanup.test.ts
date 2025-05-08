@@ -44,6 +44,7 @@ test('Codex child terminates cleanly when Electron quits', async ({ tangent }) =
 
   // Get the PID of the spawned mock process from the main world so we can
   // later verify it no longer exists.
+  // Access the PID immediately after we know Codex has started
   const childPid: number = await tangent.app.evaluate(() => {
     const pids: Set<number> | undefined = (global as any).__codexActivePids
     
@@ -51,8 +52,9 @@ test('Codex child terminates cleanly when Electron quits', async ({ tangent }) =
     console.log('[test] CodexActivePids:', pids ? Array.from(pids) : 'undefined')
     console.log('[test] Global keys:', Object.keys(global).filter(k => k.startsWith('__codex')))
     
+    // Use values().next().value to get the first item from a Set without converting to array
     if (!pids || pids.size === 0) return 0
-    return Array.from(pids)[0]
+    return pids.values().next().value
   })
 
   console.log('Child PID:', childPid)
