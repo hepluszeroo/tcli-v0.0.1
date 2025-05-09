@@ -29,4 +29,7 @@ module.exports = {
   // map it to an empty stub so Webpack does not attempt to bundle the real
   // (native) implementation.
   '@such-n-such/tangent-query-parser': r('shims/tangent-query-parser-shim.js'),
+
+  // Add alias for common directory to resolve imports like 'common/ipc_types'
+  common: r('src/common'),
 };
