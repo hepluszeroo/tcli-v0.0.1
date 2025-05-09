@@ -55,20 +55,12 @@ jobs:
             echo "DEBUG: Running Playwright from $(pwd)"
             echo "DEBUG: Using grep 'Codex' filter (project=Tests) for Playwright discovery"
             ls -la tests-integration/
-            echo "Attempting to run Playwright (regex argument)..."
-            echo "Attempting to run Playwright with DEBUG flags and explicit config..."
-            DEBUG=pw:api,pw:test,codex,main,mock-codex INTEGRATION_TEST_USE_FILE_TRANSPORT=1 CODEX_DEBUG_TIMERS=1 DUMP_HANDLES=1 \
-            pnpm exec playwright test --config=./playwright.config.ts --project Tests --grep Codex --workers 1 --reporter=list
+            echo "Listing tests…"
+            pnpm exec playwright test --config=./playwright.config.ts --project Tests --grep Codex --list
 
-            # If the above doesn't work, try a single test file:
-            echo "\nAttempting to run a single test file as a fallback..."
+            echo "Running Codex tests…"
             DEBUG=pw:api,pw:test,codex,main,mock-codex INTEGRATION_TEST_USE_FILE_TRANSPORT=1 CODEX_DEBUG_TIMERS=1 DUMP_HANDLES=1 \
-            pnpm exec playwright test --config=./playwright.config.ts --project Tests --grep Codex --workers 1 --reporter=list
-
-            # Try with default config-based test discovery:
-            echo "\nAttempting to run with default config-based test discovery..."
-            DEBUG=pw:api,pw:test,codex,main,mock-codex INTEGRATION_TEST_USE_FILE_TRANSPORT=1 CODEX_DEBUG_TIMERS=1 DUMP_HANDLES=1 \
-            pnpm exec playwright test --config=./playwright.config.ts --project Tests --workers 1 --reporter=list
+            pnpm exec playwright test --config=./playwright.config.ts --project Tests --grep Codex --workers 1 --reporter=list --timeout=60000
           else
             # Run Docker container on Linux with Xvfb for display server
             docker run --rm \
@@ -78,7 +70,9 @@ jobs:
               -e DUMP_HANDLES=1 \
               tangent-codex-tests \
               xvfb-run --server-num=99 --server-args="-screen 0 1280x720x24" \
+              pnpm exec playwright test \
+                --config=./Tangent-main/apps/tangent-electron/playwright.config.ts --project Tests --grep Codex --list && \
               DEBUG=pw:api,pw:test,codex,main,mock-codex pnpm exec playwright test \
                 --config=./Tangent-main/apps/tangent-electron/playwright.config.ts \
-                --project Tests --grep Codex --workers 1 --reporter=list
+                --project Tests --grep Codex --workers 1 --reporter=list --timeout=60000
           fi

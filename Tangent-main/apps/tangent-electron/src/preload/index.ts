@@ -16,6 +16,12 @@ if (process.env.DEBUG?.includes('preload') || process.env.INTEGRATION_TEST === '
 import type WindowApi from 'common/WindowApi'
 import { contextBridge, ipcRenderer } from 'electron'
 
+// Surface silent promise rejections in renderer context – useful in CI.
+window.addEventListener('unhandledrejection', (event) => {
+  // eslint-disable-next-line no-console
+  console.error('[PRELOAD] unhandledrejection:', event.reason)
+})
+
 // ---------------------------------------------------------------------------
 // Channel allow-list & early buffer.
 //  • First ipcRenderer.on registration whitelists the channel under
