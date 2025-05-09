@@ -67,6 +67,14 @@ Tangent-main/apps/tangent-electron/src/main/*
 !Tangent-main/apps/tangent-electron/src/main/WorkspaceTreeNode.ts
 !Tangent-main/apps/tangent-electron/src/main/DataFile.ts
 !Tangent-main/apps/tangent-electron/src/main/WindowHandle.ts
+!Tangent-main/apps/tangent-electron/src/main/files.ts
+!Tangent-main/apps/tangent-electron/src/main/grammarLoader.ts
+!Tangent-main/apps/tangent-electron/src/main/migrations/
+!Tangent-main/apps/tangent-electron/src/main/migrations/workspaceMigrator.ts
+!Tangent-main/apps/tangent-electron/src/main/ioQueue.ts
+!Tangent-main/apps/tangent-electron/src/main/utils/
+!Tangent-main/apps/tangent-electron/src/main/utils/codex_ndjson_parser.ts
+!Tangent-main/apps/tangent-electron/src/main/environment.ts
 !Tangent-main/apps/tangent-electron/src/app/
 Tangent-main/apps/tangent-electron/src/app/*
 !Tangent-main/apps/tangent-electron/src/app/webpack.config.js
@@ -93,6 +101,10 @@ Tangent-main/apps/tangent-electron/scripts/*
 !Tangent-main/apps/tangent-electron/scripts/stub_main.js
 !Tangent-main/apps/tangent-electron/scripts/stub_preload.js
 !Tangent-main/apps/tangent-electron/scripts/stub_renderer.html
+
+# Include shim files needed for webpack builds
+!Tangent-main/apps/tangent-electron/shims/
+!Tangent-main/apps/tangent-electron/shims/**
 
 # Include package.json file needed for builds
 !Tangent-main/apps/tangent-electron/package.json
