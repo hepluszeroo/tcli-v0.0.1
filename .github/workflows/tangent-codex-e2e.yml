@@ -32,11 +32,27 @@ jobs:
         with:
           node-version: 20
 
+      - name: Debug Workspace Layout
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Listing files in current directory:"
+          ls -la
+          echo "Looking for pnpm-lock.yaml:"
+          find . -name "pnpm-lock.yaml" -print
+          echo "Looking for package.json:"
+          find . -name "package.json" -print
+          echo "Looking for pnpm-workspace.yaml:"
+          find . -name "pnpm-workspace.yaml" -print
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
         with:
           version: 9
-          run_install: true
+          run_install: false # Disable automatic install
+
+      - name: Install root dependencies
+        run: pnpm install --frozen-lockfile
+        # No working-directory needed as we want to run in repo root
 
       - name: Build Docker image (Linux only)
         id: docker_build
