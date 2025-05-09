@@ -7,6 +7,9 @@
 
 # Build & test artefacts
 Tangent-main/apps/tangent-electron/build/
+# Include build-e2e.js for CI
+!Tangent-main/apps/tangent-electron/build/build-e2e.js
+!Tangent-main/apps/tangent-electron/build/index.js
 Tangent-main/apps/tangent-electron/test-results/
 codex-main/codex-cli/dist/
 test-results/
