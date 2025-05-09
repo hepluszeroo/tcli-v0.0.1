@@ -67,6 +67,16 @@ Tangent-main/apps/tangent-electron/scripts/*
 !Tangent-main/apps/tangent-electron/scripts/stub_preload.js
 !Tangent-main/apps/tangent-electron/scripts/stub_renderer.html
 
+# Include package.json file needed for builds
+!Tangent-main/apps/tangent-electron/package.json
+
+# Include placeholder package for typewriter dependency
+!Tangent-main/lib/
+!Tangent-main/lib/typewriter/
+!Tangent-main/lib/typewriter/package.json
+!Tangent-main/lib/typewriter/index.js
+!Tangent-main/lib/typewriter/README.md
+
 codex-main/
 
 # Our test and diagnostic scripts
