@@ -80,6 +80,7 @@ Tangent-main/apps/tangent-electron/src/testing/e2e_stub/*
 !Tangent-main/apps/tangent-electron/tsconfig.main.json
 !Tangent-main/apps/tangent-electron/svelte.config.js
 !Tangent-main/svelte.config.js
+!Tangent-main/apps/tangent-electron/webpack.aliases.js
 
 # Include stub files needed for Docker build
 !Tangent-main/apps/tangent-electron/scripts/
