@@ -57,17 +57,19 @@ jobs:
             echo "DEBUG: Glob pattern being passed: \"./tests-integration/codex_*.test.ts\""
             ls -la tests-integration/
             echo "Attempting to run Playwright..."
-            # Attempt to run with explicit .test.ts extension glob
-            INTEGRATION_TEST_USE_FILE_TRANSPORT=1 CODEX_DEBUG_TIMERS=1 DUMP_HANDLES=1 pnpm exec playwright test "./tests-integration/codex_*.test.ts" --workers 1 --reporter=list
+            echo "Attempting to run Playwright with DEBUG flags and explicit config..."
+            DEBUG=pw:api,pw:test,codex,main,mock-codex INTEGRATION_TEST_USE_FILE_TRANSPORT=1 CODEX_DEBUG_TIMERS=1 DUMP_HANDLES=1 \
+            pnpm exec playwright test --config=./playwright.config.ts "./tests-integration/codex_*.test.ts" --workers 1 --reporter=list
 
-            # If the above doesn't work, uncomment and try this approach with explicit file paths:
-            # INTEGRATION_TEST_USE_FILE_TRANSPORT=1 CODEX_DEBUG_TIMERS=1 DUMP_HANDLES=1 pnpm exec playwright test \
-            #  tests-integration/codex_dark_launch.test.ts \
-            #  tests-integration/codex_happy_path.test.ts \
-            #  tests-integration/codex_oversize.test.ts \
-            #  tests-integration/codex_quit_cleanup.test.ts \
-            #  tests-integration/codex_toggle.test.ts \
-            #  --workers 1 --reporter=list
+            # If the above doesn't work, try a single test file:
+            echo "\nAttempting to run a single test file as a fallback..."
+            DEBUG=pw:api,pw:test,codex,main,mock-codex INTEGRATION_TEST_USE_FILE_TRANSPORT=1 CODEX_DEBUG_TIMERS=1 DUMP_HANDLES=1 \
+            pnpm exec playwright test --config=./playwright.config.ts "./tests-integration/codex_happy_path.test.ts" --workers 1 --reporter=list
+
+            # Try with default config-based test discovery:
+            echo "\nAttempting to run with default config-based test discovery..."
+            DEBUG=pw:api,pw:test,codex,main,mock-codex INTEGRATION_TEST_USE_FILE_TRANSPORT=1 CODEX_DEBUG_TIMERS=1 DUMP_HANDLES=1 \
+            pnpm exec playwright test --config=./playwright.config.ts --workers 1 --reporter=list
           else
             # Run Docker container on Linux
             docker run --rm \
@@ -77,5 +79,5 @@ jobs:
               -e DUMP_HANDLES=1 \
               tangent-codex-tests \
               xvfb-run --server-num=99 --server-args="-screen 0 1280x720x24" \
-              pnpm exec playwright test "tests-integration/codex_*.test.ts" --workers 1 --reporter=list
+              DEBUG=pw:api,pw:test,codex,main,mock-codex pnpm exec playwright test --config=./playwright.config.ts "tests-integration/codex_*.test.ts" --workers 1 --reporter=list
           fi

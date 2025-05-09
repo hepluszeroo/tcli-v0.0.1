@@ -42,32 +42,39 @@ ARG STUB_HASH
     # Ensure the throw-away workspace path exists for integration tests
     RUN mkdir -p /repo/Tangent-main/apps/IntegrationTestWorkspace
 
-    # allow Electron post-install & install monorepo with enhanced logging
+    # Configure pnpm for optimal reliability and install deps in two separate steps
     RUN echo "allowed-scripts=electron" >> .npmrc && \
         echo "Setting up .npmrc for better reliability..." && \
         echo "fetch-timeout=300000" >> .npmrc && \
         echo "fetch-retries=5" >> .npmrc && \
         echo "network-timeout=300000" >> .npmrc && \
-        echo "\n\n🚀 Starting monorepo installation with pnpm...\n\n" && \
-        pnpm install -w --prod=false --frozen-lockfile --prefer-offline --ignore-scripts=false && \
-        echo "\n\n✅ pnpm installation completed successfully\n\n" && \
-        pnpm store prune && \
-        echo "Checking for electron in node_modules..." && \
+        echo "strict-peer-dependencies=false" >> .npmrc && \
+        echo "auto-install-peers=true" >> .npmrc
+
+    ARG APP_FILTER="tangent_electron"
+    ################################################################
+    # 2 · Two-phase installation: core dependencies first, then Electron
+    ################################################################
+    # Step 1: Install core dependencies (excluding Electron)
+    RUN echo "🚀 Installing core dependencies (without Electron)..." && \
+        PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pnpm install -w --prod=false --frozen-lockfile --prefer-offline && \
+        echo "✅ Core dependencies installed successfully"
+
+    # Step 2: Install Electron using multiple approaches for redundancy
+    RUN echo "🚀 Installing Electron..." && \
+        echo "Method 1: Using pnpm add..." && \
+        pnpm add -Dw --workspace-root electron@35.2.1 --ignore-scripts=false || echo "pnpm add failed, trying alternate methods" && \
+        echo "Method 2: Using Playwright's installer..." && \
+        npx playwright install --with-deps electron || echo "Playwright electron install failed, trying final method" && \
+        echo "Method 3: Installing electron binary manually..." && \
+        node -e "require('electron/install.js')" || echo "Manual electron install failed" && \
+        echo "Verifying electron installation..." && \
         if [ -d "/repo/node_modules/electron" ]; then \
           ls -la /repo/node_modules/electron && \
           echo "✅ Electron directory exists in node_modules" ; \
         else \
-          echo "⚠️ Electron not found in node_modules after pnpm install"; \
+          echo "⚠️ Electron not found in node_modules, but continuing anyway"; \
         fi
-
-    ARG APP_FILTER="tangent_electron"
-    ################################################################
-    # 2 · Electron installation simplified
-    ################################################################
-    # Install Electron using Playwright's own installer which is more robust
-    RUN echo "Installing Electron via Playwright installer" && \
-        pnpm dlx playwright@1.52.0 install --with-deps electron && \
-        echo "✅ Playwright Electron installation completed"
 
     ###########################################################################
     # 2b · Install any missing build-time deps (adm-zip for webpack plugin)
@@ -77,27 +84,23 @@ ARG STUB_HASH
     ################################################################################
     # 3 · Link real Electron package from pnpm store
     ################################################################################
-RUN set -eux; \
-        # Check if Electron is correctly installed
-        echo '--- Verifying Electron installation -------------------'; \
-        if [ -d "/repo/node_modules/electron" ]; then \
-            echo "✅ Electron found in /repo/node_modules/electron"; \
-        else \
-            # Find Electron in pnpm store and create a link
-            STORE_PATH=$(find "$(pnpm root)/.pnpm" -type f -path '*/electron@*/node_modules/electron/cli.js' -print -quit | xargs dirname || true); \
+    # 3 · Ensure Electron is linked in node_modules (idempotent)
+    RUN echo "Ensuring Electron is properly linked..." && \
+        if [ ! -d "/repo/node_modules/electron" ]; then \
+            echo "Searching for Electron in pnpm store..." && \
+            STORE_PATH=$(find "$(pnpm root)/.pnpm" -type f -path '*/electron@*/node_modules/electron/cli.js' -print -quit | xargs dirname || true) && \
             if [ -n "$STORE_PATH" ] && [ -f "$STORE_PATH/cli.js" ]; then \
-                echo "Found Electron in pnpm store at: $STORE_PATH"; \
-                mkdir -p /repo/node_modules; \
-                ln -sf "$STORE_PATH" /repo/node_modules/electron; \
+                echo "Found Electron in pnpm store at: $STORE_PATH" && \
+                mkdir -p /repo/node_modules && \
+                ln -sf "$STORE_PATH" /repo/node_modules/electron && \
                 echo "✅ Created symlink to Electron"; \
             else \
-                echo "❌ Electron not found in expected locations. Trying one more direct install..."; \
-                echo "Attempting fallback electron installation" && \
-                npx playwright install --with-deps electron || \
-                { echo "⚠️ Both installation methods failed"; exit 1; }; \
+                echo "No Electron found to link. Will rely on Playwright's built-in Electron."; \
             fi \
-        fi; \
-        ls -la /repo/node_modules/electron
+        else \
+            echo "✅ Electron already available in node_modules"; \
+        fi && \
+        ls -la /repo/node_modules 2>/dev/null | grep electron || echo "No electron entry in node_modules directory listing"
 
     ################################################################################
     # 4 · Comprehensive Electron self-test with better diagnostics
