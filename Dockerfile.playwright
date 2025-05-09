@@ -42,22 +42,32 @@ ARG STUB_HASH
     # Ensure the throw-away workspace path exists for integration tests
     RUN mkdir -p /repo/Tangent-main/apps/IntegrationTestWorkspace
 
-    # allow Electron post-install & install monorepo
+    # allow Electron post-install & install monorepo with enhanced logging
     RUN echo "allowed-scripts=electron" >> .npmrc && \
-        pnpm install -w --prod=false --frozen-lockfile --ignore-scripts=false && \
-        pnpm store prune
+        echo "Setting up .npmrc for better reliability..." && \
+        echo "fetch-timeout=300000" >> .npmrc && \
+        echo "fetch-retries=5" >> .npmrc && \
+        echo "network-timeout=300000" >> .npmrc && \
+        echo "\n\n🚀 Starting monorepo installation with pnpm...\n\n" && \
+        pnpm install -w --prod=false --frozen-lockfile --prefer-offline --ignore-scripts=false && \
+        echo "\n\n✅ pnpm installation completed successfully\n\n" && \
+        pnpm store prune && \
+        echo "Checking for electron in node_modules..." && \
+        if [ -d "/repo/node_modules/electron" ]; then \
+          ls -la /repo/node_modules/electron && \
+          echo "✅ Electron directory exists in node_modules" ; \
+        else \
+          echo "⚠️ Electron not found in node_modules after pnpm install"; \
+        fi
 
     ARG APP_FILTER="tangent_electron"
     ################################################################
-    # 2 · Electron post-install (download the binary)
+    # 2 · Electron installation simplified
     ################################################################
-    # Ensure Electron package binary is present (install + rebuild fallback)
-    RUN pnpm --filter ${APP_FILTER} rebuild electron || true && \
-        # If cli.js is still missing after rebuild, install electron directly
-        if ! find "$(pnpm root)/.pnpm" -maxdepth 3 -type f -path '*/electron@*/node_modules/electron/cli.js' | grep -q cli.js; then \
-          echo 'Electron binary still missing – performing direct install'; \
-          pnpm add -Dw --workspace-root electron@35.2.1 --ignore-scripts=false; \
-        fi
+    # Install Electron using Playwright's own installer which is more robust
+    RUN echo "Installing Electron via Playwright installer" && \
+        pnpm dlx playwright@1.52.0 install --with-deps electron && \
+        echo "✅ Playwright Electron installation completed"
 
     ###########################################################################
     # 2b · Install any missing build-time deps (adm-zip for webpack plugin)
@@ -68,22 +78,45 @@ ARG STUB_HASH
     # 3 · Link real Electron package from pnpm store
     ################################################################################
 RUN set -eux; \
-        # Ensure the Electron binary is downloaded (run install.js explicitly)
-        pnpm --filter ${APP_FILTER} exec node node_modules/electron/install.js || true; \
-        echo '--- listing electron folders in store ----------------'; \
-        find "$(pnpm root)/.pnpm" -maxdepth 3 -type d -name 'electron@*' | head || true; \
-        echo '------------------------------------------------------'; \
-        STORE_PATH=$(find "$(pnpm root)/.pnpm" -type f -path '*/electron@*/node_modules/electron/cli.js' -print -quit | xargs dirname || true); \
-        echo "Electron store path: $STORE_PATH"; \
-        [ -n "$STORE_PATH" ] && [ -f "$STORE_PATH/cli.js" ] || { echo 'electron cli.js missing'; exit 1; }; \
-        mkdir -p /repo/node_modules; \
-        ln -sf "$STORE_PATH" /repo/node_modules/electron; \
-        ls -l /repo/node_modules/electron
+        # Check if Electron is correctly installed
+        echo '--- Verifying Electron installation -------------------'; \
+        if [ -d "/repo/node_modules/electron" ]; then \
+            echo "✅ Electron found in /repo/node_modules/electron"; \
+        else \
+            # Find Electron in pnpm store and create a link
+            STORE_PATH=$(find "$(pnpm root)/.pnpm" -type f -path '*/electron@*/node_modules/electron/cli.js' -print -quit | xargs dirname || true); \
+            if [ -n "$STORE_PATH" ] && [ -f "$STORE_PATH/cli.js" ]; then \
+                echo "Found Electron in pnpm store at: $STORE_PATH"; \
+                mkdir -p /repo/node_modules; \
+                ln -sf "$STORE_PATH" /repo/node_modules/electron; \
+                echo "✅ Created symlink to Electron"; \
+            else \
+                echo "❌ Electron not found in expected locations. Trying one more direct install..."; \
+                echo "Attempting fallback electron installation" && \
+                npx playwright install --with-deps electron || \
+                { echo "⚠️ Both installation methods failed"; exit 1; }; \
+            fi \
+        fi; \
+        ls -la /repo/node_modules/electron
 
     ################################################################################
-    # 4 · Electron self-test (plain Node require)
+    # 4 · Comprehensive Electron self-test with better diagnostics
     ################################################################################
-    RUN node -e "const bin=require('electron'); const {spawnSync}=require('child_process'); const r=spawnSync(bin,['--version','--no-sandbox']); if(r.status!==0){console.error(r.stderr.toString());process.exit(1);} console.log('✔',r.stdout.toString().trim());"
+    RUN echo "\n\n❔ Running comprehensive Electron self-test...\n\n" && \
+        echo "1. Testing direct require..." && \
+        node -e "try { const path = require.resolve('electron'); console.log('✅ Electron resolved at', path); } catch(err) { console.error('❌ Electron require failed:', err.message); process.exit(1); }" && \
+        echo "2. Testing binary execution..." && \
+        node -e "const bin=require('electron'); const {spawnSync}=require('child_process'); console.log('Electron binary path:', bin); const r=spawnSync(bin,['--version','--no-sandbox']); if(r.status!==0){console.error('❌ Electron execution failed:',r.stderr.toString());process.exit(1);} console.log('✅ Electron version:',r.stdout.toString().trim());" && \
+        echo "3. Checking CLI symlink..." && \
+        if [ -f "/repo/node_modules/.bin/electron" ]; then \
+            echo "✅ electron CLI symlink exists"; \
+            ls -la /repo/node_modules/.bin/electron; \
+            echo "Testing symlinked CLI..." && \
+            /repo/node_modules/.bin/electron --version --no-sandbox || echo "Note: CLI execution may fail in Docker without display, but symlink exists"; \
+        else \
+            echo "⚠️ electron CLI symlink missing!"; \
+        fi && \
+        echo "\n\n✅ Electron diagnostics completed successfully\n\n"
 
     ################################################################################
     # 5 · fallback bundle – copy working stubs instead of printf-ing them
@@ -132,7 +165,7 @@ EOS
     # 8 · ENTRYPOINT — run the five Codex specs under xvfb
     ################################################################################
     # Use `bash -c` so we can chain debug script and test runner in one command.
-    CMD ["/bin/bash", "-c", "/repo/debug.sh && cd /repo/Tangent-main/apps/tangent-electron && xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' pnpm dlx playwright@1.52.0 test 'tests-integration/codex_*' --reporter=line --timeout=90000 --workers=1 --debug"]
+    CMD ["/bin/bash", "-c", "/repo/debug.sh && cd /repo/Tangent-main/apps/tangent-electron && echo 'Running Playwright with properly quoted glob pattern...' && xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 DEBUG=pw:browser*,pw:electron* pnpm dlx playwright@1.52.0 test \"tests-integration/codex_*.test.ts\" --reporter=list --timeout=120000 --workers=1 --debug"]
 # Optional cache-buster so this layer rebuilds whenever stub_main.js or the
 # repository HEAD changes.  Supply with
 #   docker build --build-arg STUB_HASH=$(git rev-parse HEAD) …

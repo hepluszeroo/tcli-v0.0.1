@@ -217,7 +217,10 @@ app.on('window-all-closed', () => {
 app.whenReady().then(() => {
   console.log('E2E test stub: app ready');
   console.log('Current working directory:', process.cwd());
-  
+  console.log('__dirname:', __dirname);
+  console.log('__filename:', __filename);
+  console.log('app.getAppPath():', app.getAppPath());
+
   // Resolve path to the compiled preload bundle.  In the E2E build the file
   // ends up at  <appPath>/bundle/preload.js  regardless of source layout.
   // In the compiled build the preload ends up either as
@@ -225,16 +228,63 @@ app.whenReady().then(() => {
   //   or <appPath>/bundle/preload.js  (when appPath === __build)
   // Preload sits next to the compiled main bundle after build:test-e2e
   let preloadPath = path.join(path.dirname(__filename), 'preload.js');
+  console.log('Trying preload path (same dir):', preloadPath, 'exists:', fs.existsSync(preloadPath));
+
   if (!fs.existsSync(preloadPath)) {
     preloadPath = path.join(path.dirname(__filename), 'bundle', 'preload.js');
+    console.log('Trying preload path (bundle subdir):', preloadPath, 'exists:', fs.existsSync(preloadPath));
+  }
+
+  // Additional fallback paths for packaged app
+  if (!fs.existsSync(preloadPath)) {
+    preloadPath = path.join(app.getAppPath(), 'preload.js');
+    console.log('Trying preload path (app root):', preloadPath, 'exists:', fs.existsSync(preloadPath));
   }
 
   if (!fs.existsSync(preloadPath)) {
+    preloadPath = path.join(app.getAppPath(), 'bundle', 'preload.js');
+    console.log('Trying preload path (app root bundle):', preloadPath, 'exists:', fs.existsSync(preloadPath));
+  }
+
+  // Check for preload in __build directories
+  if (!fs.existsSync(preloadPath)) {
+    preloadPath = path.join(process.cwd(), '__build', 'bundle', 'preload.js');
+    console.log('Trying preload path (__build/bundle):', preloadPath, 'exists:', fs.existsSync(preloadPath));
+  }
+
+  if (!fs.existsSync(preloadPath)) {
+    // Additional diagnostic: list the contents of the app directory
     console.error('FATAL: could not resolve compiled preload at', preloadPath);
+    console.log('Listing files in app directory:');
+
+    try {
+      // List app root directory
+      const appDir = app.getAppPath();
+      console.log(`Files in ${appDir}:`);
+      const appFiles = fs.readdirSync(appDir);
+      appFiles.forEach(file => console.log(`- ${file}`));
+
+      // Check if bundle directory exists
+      const bundleDir = path.join(appDir, 'bundle');
+      if (fs.existsSync(bundleDir) && fs.statSync(bundleDir).isDirectory()) {
+        console.log(`Files in ${bundleDir}:`);
+        const bundleFiles = fs.readdirSync(bundleDir);
+        bundleFiles.forEach(file => console.log(`- ${file}`));
+      }
+
+      // List current directory
+      const currentDir = process.cwd();
+      console.log(`Files in ${currentDir}:`);
+      const currentFiles = fs.readdirSync(currentDir);
+      currentFiles.forEach(file => console.log(`- ${file}`));
+    } catch (err) {
+      console.error('Error listing files:', err);
+    }
+
     app.quit();
     return;
   }
-  console.log('Preload path:', preloadPath);
+  console.log('Using preload path:', preloadPath);
 
   // Playwright sometimes propagates ELECTRON_ENABLE_SANDBOX=1 which prevents
   // our private IPC channels from working. Remove it explicitly in the test

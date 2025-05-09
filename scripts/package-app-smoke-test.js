@@ -73,19 +73,27 @@ async function launchApp(enableCodexIntegration, useFileTransport = false) {
     MOCK_CODEX_PATH: path.join(__dirname, 'mock_codex_headless.js'),
     INTEGRATION_TEST_USE_FILE_TRANSPORT: useFileTransport ? '1' : '0',
     ENABLE_CODEX_INTEGRATION: enableCodexIntegration ? '1' : '0',
-    DEBUG: 'codex'  // Enable codex debug logging
+    DEBUG: 'codex',  // Enable codex debug logging
+    // Enhanced diagnostic variables
+    ELECTRON_ENABLE_LOGGING: '1',
+    ELECTRON_DEBUG_LOG: '1',
+    E2E_DEVTOOLS: '1',  // Enable DevTools for additional debugging
+    PACKAGED_APP_SMOKE_TEST: '1'  // Signal that we're running the smoke test
   };
 
   if (useFileTransport && MOCK_CODEX_OUT) {
     env.MOCK_CODEX_OUT = MOCK_CODEX_OUT;
-    log(`✅ Setting environment variables for file transport:
-  - INTEGRATION_TEST_USE_FILE_TRANSPORT=${env.INTEGRATION_TEST_USE_FILE_TRANSPORT}
-  - MOCK_CODEX_OUT=${env.MOCK_CODEX_OUT}
-  - MOCK_CODEX_PATH=${env.MOCK_CODEX_PATH}
-  - ENABLE_CODEX_INTEGRATION=${env.ENABLE_CODEX_INTEGRATION}
-  - DEBUG=${env.DEBUG}
-`);
   }
+
+  // Log all environment variables for debugging
+  log(`✅ Setting environment variables for smoke test:`);
+  Object.entries(env).forEach(([key, value]) => {
+    if (key.startsWith('TANGENT_') || key.startsWith('CODEX_') || key.startsWith('MOCK_') ||
+        key.startsWith('INTEGRATION_') || key.startsWith('ENABLE_') || key.startsWith('ELECTRON_') ||
+        key.startsWith('DEBUG') || key.startsWith('E2E_') || key.startsWith('PACKAGED_')) {
+      log(`  - ${key}=${value}`);
+    }
+  });
 
   // Find the Electron executable
   let electronPath;
