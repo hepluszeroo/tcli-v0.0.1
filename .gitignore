@@ -38,6 +38,7 @@ Tangent-main/*
 Tangent-main/apps/*
 !Tangent-main/apps/tangent-electron/
 Tangent-main/apps/tangent-electron/*
+# Include required tests for E2E verification
 !Tangent-main/apps/tangent-electron/tests-integration/
 Tangent-main/apps/tangent-electron/tests-integration/*
 !Tangent-main/apps/tangent-electron/tests-integration/codex_happy_path.test.ts
@@ -45,6 +46,26 @@ Tangent-main/apps/tangent-electron/tests-integration/*
 !Tangent-main/apps/tangent-electron/tests-integration/codex_quit_cleanup.test.ts
 !Tangent-main/apps/tangent-electron/tests-integration/codex_toggle.test.ts
 !Tangent-main/apps/tangent-electron/tests-integration/electronHarness.ts
+
+# Include required source files needed for verification scripts
+!Tangent-main/apps/tangent-electron/src/
+Tangent-main/apps/tangent-electron/src/*
+!Tangent-main/apps/tangent-electron/src/common/
+Tangent-main/apps/tangent-electron/src/common/*
+!Tangent-main/apps/tangent-electron/src/common/settings/
+Tangent-main/apps/tangent-electron/src/common/settings/*
+!Tangent-main/apps/tangent-electron/src/common/settings/Settings.ts
+!Tangent-main/apps/tangent-electron/src/main/
+Tangent-main/apps/tangent-electron/src/main/*
+!Tangent-main/apps/tangent-electron/src/main/Workspace.ts
+!Tangent-main/apps/tangent-electron/src/main/settings.ts
+
+# Include stub files needed for Docker build
+!Tangent-main/apps/tangent-electron/scripts/
+Tangent-main/apps/tangent-electron/scripts/*
+!Tangent-main/apps/tangent-electron/scripts/stub_main.js
+!Tangent-main/apps/tangent-electron/scripts/stub_preload.js
+!Tangent-main/apps/tangent-electron/scripts/stub_renderer.html
 
 codex-main/
 

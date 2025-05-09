@@ -43,15 +43,23 @@ jobs:
         run: |
           npm install -g electron
 
+      - name: Install Tangent-electron dependencies
+        run: |
+          # Install dependencies specifically for Tangent-electron
+          cd Tangent-main/apps/tangent-electron
+          pnpm install --frozen-lockfile
+
       - name: Build for smoke test
         run: |
+          cd Tangent-main/apps/tangent-electron
+
           # Basic build command for test - adapt as needed
           if [ "$RUNNER_OS" == "macOS" ]; then
             echo "Building for macOS"
-            # Mac-specific build steps if needed
+            pnpm run build:test
           else
             echo "Building for Linux"
-            # Linux-specific build steps if needed
+            pnpm run build:test
           fi
 
       - name: Run packaged app smoke test
@@ -59,9 +67,11 @@ jobs:
           chmod +x scripts/package-app-smoke-test.js
           # Set environment variables as needed
           if [ "$RUNNER_OS" == "macOS" ]; then
-            INTEGRATION_TEST_USE_FILE_TRANSPORT=1 node scripts/package-app-smoke-test.js
+            echo "Running smoke test on macOS with file transport enabled"
+            MOCK_CODEX_PATH=$(pwd)/scripts/mock_codex_headless.js INTEGRATION_TEST_USE_FILE_TRANSPORT=1 node scripts/package-app-smoke-test.js
           else
-            node scripts/package-app-smoke-test.js
+            echo "Running smoke test on Linux"
+            MOCK_CODEX_PATH=$(pwd)/scripts/mock_codex_headless.js node scripts/package-app-smoke-test.js
           fi
 
       - name: Upload test logs
