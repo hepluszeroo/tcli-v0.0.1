@@ -19,6 +19,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+          run_install: false # Disable automatic install
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -36,12 +42,6 @@ jobs:
           find . -name "package.json" -print
           echo "Looking for pnpm-workspace.yaml:"
           find . -name "pnpm-workspace.yaml" -print
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 9
-          run_install: false # Disable automatic install
 
       - name: Install root dependencies
         run: pnpm install --frozen-lockfile
