@@ -66,6 +66,19 @@ jobs:
           echo "::error::Docker build failed. Check Dockerfile.playwright and build scripts."
           exit 1
 
+      - name: Debug Build Environment (macOS only)
+        if: runner.os == 'macOS'
+        run: |
+          echo "Current working directory: $(pwd)"
+          echo "Checking for build-e2e.js file:"
+          ls -la Tangent-main/apps/tangent-electron/build/
+          echo "Checking package.json script:"
+          cat Tangent-main/apps/tangent-electron/package.json | grep build:test-e2e
+          echo "Verifying webpack availability:"
+          cd Tangent-main/apps/tangent-electron
+          node -e "try { const wp = require.resolve('webpack'); console.log('✅ webpack found at:', wp); } catch (err) { console.error('❌ webpack not found:', err.message); }"
+          cd -
+
       - name: Build E2E bundle (macOS only)
         if: runner.os == 'macOS'
         run: pnpm --filter tangent_electron run build:test-e2e
