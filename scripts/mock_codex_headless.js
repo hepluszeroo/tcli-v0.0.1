@@ -16,30 +16,57 @@
  *   node mock.js                                 # happy-path (ready + idle)
  *   node mock.js --oversize 1200000 {"type":"ok"}
  *   node mock.js --delay 1000 {"type":"hb"}
+ *   node mock.js --out /tmp/codex-output.log     # use file transport
  *
  * NOTE: Stdout *only* ever contains well-formed JSON objects **or** the
  * single oversize junk line.  All diagnostic information goes to stderr so
  * it never interferes with the NDJSON parser in the Electron harness.
+ *
+ * WORKAROUND FOR ELECTRON+PLAYWRIGHT ON MACOS:
+ * This script implements a dual transport mechanism (stdout + file) to handle
+ * a specific issue in macOS when Electron is launched by Playwright. In this
+ * scenario, the stdout.fd of child processes can be undefined, breaking
+ * communication through stdio pipes. To work around this, we:
+ *
+ * 1. Accept a --out parameter or MOCK_CODEX_OUT environment variable pointing
+ *    to a temporary file path
+ * 2. Write all NDJSON messages to both stdout AND this file simultaneously
+ * 3. The Electron process can then poll this file as a backup communication channel
+ *
+ * This behavior is controlled by the INTEGRATION_TEST_USE_FILE_TRANSPORT
+ * environment variable:
+ *   - '1': Enable file transport workaround
+ *   - '0': Disable it (useful for debugging)
+ *   - If not set: Automatically use file transport on macOS only
+ *
+ * TODO: This is a temporary workaround. File upstream bug reports with Electron
+ * and Playwright to investigate the root cause of stdout.fd being undefined
+ * when Electron is launched by Playwright on macOS.
  */
 
-// CRITICAL DIAGNOSTIC - write this to a file to debug argv position issues
+// Initialize debug logging file - This is only written to when DEBUG or MOCK_CODEX_DEBUG is enabled
 const fs = require('fs');
+const DEBUG = process.env.DEBUG?.includes('codex') || process.env.MOCK_CODEX_DEBUG === '1' || process.env.PLAYWRIGHT_IN_DOCKER === '1';
 const logPath = '/tmp/mock-codex-debug.log';
-fs.writeFileSync(logPath, 'Mock Codex Debug Log\n', {flag: 'w'});
-fs.appendFileSync(logPath, `Process ID: ${process.pid}\n`);
-fs.appendFileSync(logPath, `Working directory: ${process.cwd()}\n`);
-fs.appendFileSync(logPath, `Args: ${JSON.stringify(process.argv)}\n`);
-fs.appendFileSync(logPath, `Script position: ${process.argv.indexOf(__filename)}\n`);
-fs.appendFileSync(logPath, `Path: ${__filename}\n`);
-fs.appendFileSync(logPath, `ELECTRON_RUN_AS_NODE: ${process.env.ELECTRON_RUN_AS_NODE}\n`);
-fs.appendFileSync(logPath, `MOCK_CODEX_DEBUG: ${process.env.MOCK_CODEX_DEBUG}\n`);
-fs.appendFileSync(logPath, `MOCK_CODEX_ARGS: ${process.env.MOCK_CODEX_ARGS}\n\n`);
 
-// Try to force-flush the log file to ensure it's written to disk
-try {
-  fs.fsyncSync(fs.openSync(logPath, 'r+'));
-} catch (e) {
-  // Ignore errors, this is just a best-effort
+// Only create debug log file when debug mode is on
+if (DEBUG) {
+  fs.writeFileSync(logPath, 'Mock Codex Debug Log\n', {flag: 'w'});
+  fs.appendFileSync(logPath, `Process ID: ${process.pid}\n`);
+  fs.appendFileSync(logPath, `Working directory: ${process.cwd()}\n`);
+  fs.appendFileSync(logPath, `Args: ${JSON.stringify(process.argv)}\n`);
+  fs.appendFileSync(logPath, `Script position: ${process.argv.indexOf(__filename)}\n`);
+  fs.appendFileSync(logPath, `Path: ${__filename}\n`);
+  fs.appendFileSync(logPath, `ELECTRON_RUN_AS_NODE: ${process.env.ELECTRON_RUN_AS_NODE}\n`);
+  fs.appendFileSync(logPath, `MOCK_CODEX_DEBUG: ${process.env.MOCK_CODEX_DEBUG}\n`);
+  fs.appendFileSync(logPath, `MOCK_CODEX_ARGS: ${process.env.MOCK_CODEX_ARGS}\n\n`);
+
+  // Force-flush the log file to ensure it's written to disk
+  try {
+    fs.fsyncSync(fs.openSync(logPath, 'r+'));
+  } catch (e) {
+    // Ignore errors, this is just a best-effort
+  }
 }
 
 // Startup debug logging - conditionally output this to help debug process launch issues
@@ -80,11 +107,12 @@ if (process.stderr.isTTY) {
 // REMOVED: We no longer emit heartbeat messages that may interfere with tests
 // These messages can confuse assertion checks that depend on specific message ordering
 
-// Immediately log to the debug file that we sent these messages
-fs.appendFileSync(logPath, 'Sent initial messages: codex_ready, status:idle\n');
+// Log to the debug file if debug mode is enabled
+if (DEBUG) {
+  fs.appendFileSync(logPath, 'Sent initial messages: codex_ready, status:idle\n');
+}
 
-// Enable verbose logging when DEBUG includes 'codex' or MOCK_CODEX_DEBUG=1 or we're in Docker
-const DEBUG = process.env.DEBUG?.includes('codex') || process.env.MOCK_CODEX_DEBUG === '1' || process.env.PLAYWRIGHT_IN_DOCKER === '1';
+// debugLog and errorLog functions for consistent logging
 function debugLog(...a) {
   if (DEBUG) {
     console.error('[mock-codex]', ...a);
@@ -93,7 +121,9 @@ function debugLog(...a) {
 }
 function errorLog(...a) {
   console.error('[mock-codex]', ...a);
-  fs.appendFileSync(logPath, `ERROR: ${a.join(' ')}\n`);
+  if (DEBUG) {
+    fs.appendFileSync(logPath, `ERROR: ${a.join(' ')}\n`);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -103,6 +133,42 @@ function errorLog(...a) {
 const envArgs = (process.env.MOCK_CODEX_ARGS || '').split(' ').filter(Boolean);
 const cmdArgs = process.argv.slice(2);
 const argv = [...envArgs, ...cmdArgs];
+
+// Optional file sink passed via --out or environment
+let outPath = process.env.MOCK_CODEX_OUT || null;
+
+// Log file transport path for debugging
+debugLog('MOCK_CODEX_OUT env var:', process.env.MOCK_CODEX_OUT);
+if (DEBUG) {
+  fs.appendFileSync(logPath, `MOCK_CODEX_OUT env var: ${process.env.MOCK_CODEX_OUT || 'not set'}\n`);
+}
+
+// Scan argv and cmdArgs explicitly for --out
+const outArgIndex = process.argv.indexOf('--out');
+if (outArgIndex !== -1 && outArgIndex < process.argv.length - 1) {
+  outPath = process.argv[outArgIndex + 1];
+  debugLog('Found --out in process.argv at index', outArgIndex, 'with value:', outPath);
+  if (DEBUG) {
+    fs.appendFileSync(logPath, `Found --out in process.argv at index ${outArgIndex} with value: ${outPath}\n`);
+  }
+}
+
+// Also check cmdArgs
+const cmdOutArgIndex = cmdArgs.indexOf('--out');
+if (cmdOutArgIndex !== -1 && cmdOutArgIndex < cmdArgs.length - 1) {
+  outPath = cmdArgs[cmdOutArgIndex + 1];
+  debugLog('Found --out in cmdArgs at index', cmdOutArgIndex, 'with value:', outPath);
+  if (DEBUG) {
+    fs.appendFileSync(logPath, `Found --out in cmdArgs at index ${cmdOutArgIndex} with value: ${outPath}\n`);
+  }
+}
+
+if (outPath) {
+  debugLog('Final outPath:', outPath);
+  if (DEBUG) {
+    fs.appendFileSync(logPath, `Final outPath: ${outPath}\n`);
+  }
+}
 
 debugLog('Combined args:', argv);
 
@@ -138,6 +204,15 @@ for (let i = 0; i < argv.length; i++) {
     continue;
   }
 
+  if (tok === '--out') {
+    if (i + 1 >= argv.length) {
+      errorLog('ERROR: --out requires a path');
+      process.exit(1);
+    }
+    outPath = argv[++i];
+    continue;
+  }
+
   // Anything that *looks* like JSON (starts with "{") is collected verbatim.
   if (tok.startsWith('{')) {
     jsonLiterals.push(tok);
@@ -148,26 +223,76 @@ for (let i = 0; i < argv.length; i++) {
   debugLog('WARNING: ignoring unknown token', tok);
 }
 
-// Log parsed args to both console and file
-debugLog('Parsed args', { oversizeBytes, delayMs, jsonLiterals });
-fs.appendFileSync(logPath, `Parsed args: ${JSON.stringify({ oversizeBytes, delayMs, jsonLiterals })}\n`);
+// Log parsed args
+debugLog('Parsed args', { oversizeBytes, delayMs, jsonLiterals, outPath });
+if (DEBUG) {
+  fs.appendFileSync(logPath, `Parsed args: ${JSON.stringify({ oversizeBytes, delayMs, jsonLiterals, outPath })}\n`);
+}
+
+// If we have an outPath, test write access immediately
+if (outPath) {
+  try {
+    // First check for parent directory access
+    const path = require('path');
+    const dirPath = path.dirname(outPath);
+
+    try {
+      const dirStats = fs.statSync(dirPath);
+      debugLog('Parent directory exists, mode:', dirStats.mode.toString(8));
+    } catch (dirErr) {
+      errorLog('Parent directory check failed:', dirErr.message);
+    }
+
+    // Try to create an empty file to verify permissions
+    fs.writeFileSync(outPath, '');
+
+    // Try appending a valid JSON line that the parser can handle
+    fs.appendFileSync(outPath, '{"type":"file_check"}\n');
+    debugLog('Successfully initialized outPath file:', outPath);
+  } catch (e) {
+    errorLog('ERROR writing to outPath:', outPath, e.message);
+    // Don't fail - just log the error
+  }
+}
 
 // ---------------------------------------------------------------------------
 // 2 · Helper that prints a line to stdout (and ensures trailing newline).
 // ---------------------------------------------------------------------------
+/**
+ * Sends a message line to both stdout and the file transport if enabled
+ *
+ * IMPORTANT: This is a critical function for the Electron-Playwright workaround
+ * The file transport is required to handle stdout.fd === undefined issues
+ * in macOS when Electron is launched by Playwright
+ */
 function send(line) {
   if (!line.endsWith('\n')) line += '\n';
-  debugLog('Sending line:', line.substring(0, 100));
-  fs.appendFileSync(logPath, `Sending: ${line.substring(0, 100)}${line.length > 100 ? '...' : ''}\n`);
+  debugLog('Sending line:', line.substring(0, 100) + (line.length > 100 ? '...' : ''));
+
+  // CRITICAL: Write to both stdout and outPath if specified
   process.stdout.write(line);
-  
-  // Try to flush stdout - doesn't work in all Node versions but worth trying
   try {
-    if (typeof process.stdout.flush === 'function') {
-      process.stdout.flush();
+    if (typeof process.stdout.flush === 'function') process.stdout.flush();
+  } catch (flushErr) {
+    errorLog('Error flushing stdout:', flushErr.message);
+  }
+
+  if (outPath) {
+    try {
+      fs.appendFileSync(outPath, line);
+      debugLog(`Successfully wrote ${line.length} bytes to file transport`);
+    } catch (e) {
+      // Detailed error logging
+      errorLog(`Cannot write to file transport: ${e.message}`);
+      if (DEBUG) {
+        // More verbose diagnostics only in debug mode
+        console.error('[mock-codex] File write error details:', {
+          outPath,
+          error: e.message,
+          code: e.code
+        });
+      }
     }
-  } catch (e) {
-    // Ignore errors
   }
 }
 
@@ -254,20 +379,25 @@ heartbeatInterval.unref();
 // Keep the process alive when there is a delay ticker. If there is no work
 // left we simply idle – the Electron parent will terminate us when needed.
 const keepAliveTimer = setInterval(() => {
-  // Write diagnostic marker to log file to verify process is still running
-  fs.appendFileSync(logPath, `Still alive at ${new Date().toISOString()}\n`);
+  // Write diagnostic marker to log file if debug mode is on
+  if (DEBUG) {
+    fs.appendFileSync(logPath, `Still alive at ${new Date().toISOString()}\n`);
+  }
 }, 5000);
 // Make sure the interval doesn't keep Node process alive
 keepAliveTimer.unref();
 
-// Graceful shutdown on signals so Electron teardown can complete
+/**
+ * Handle shutdown signals gracefully
+ * This is important for proper cleanup during Electron/Playwright tests
+ */
 function shutdown() {
   debugLog('Shutdown signal received');
-  fs.appendFileSync(logPath, `Shutdown at ${new Date().toISOString()}\n`);
-  
+
+  // Clear intervals to stop any ongoing heartbeats or timers
   clearInterval(heartbeatInterval);
   clearInterval(keepAliveTimer);
-  
+
   process.exit(0);
 }
 
@@ -285,9 +415,10 @@ process.on('SIGINT', () => {
 // Register unhandled exception handler to catch crashes
 process.on('uncaughtException', (err) => {
   errorLog('Uncaught exception:', err);
-  fs.appendFileSync(logPath, `CRASH: ${err.stack || err.message}\n`);
+  if (DEBUG) {
+    fs.appendFileSync(logPath, `CRASH: ${err.stack || err.message}\n`);
+  }
 });
 
 // Log that we've completed initialization
 debugLog('Mock Codex initialization complete');
-fs.appendFileSync(logPath, 'Mock Codex initialization complete\n');

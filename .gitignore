@@ -1,0 +1,47 @@
+# macOS / editors
+.DS_Store
+.vscode/
+.vite/
+.env
+.claude/
+
+# Build & test artefacts
+Tangent-main/apps/tangent-electron/build/
+Tangent-main/apps/tangent-electron/test-results/
+codex-main/codex-cli/dist/
+test-results/
+coverage/
+*.log
+*.timestamp-*
+
+# Node / pnpm
+node_modules/
+.pnp.*
+.idea/
+
+# Electron packaged apps
+*.asar
+dist/
+
+# Development files
+.temp/
+.cache/
+**/out/
+**/bin/
+**/.next/
+.history/
+
+# Submodules - these are separate git repositories
+Tangent-main/
+codex-main/
+
+# Our new test and diagnostic scripts
+scripts/electron-playwright-stdout-repro.js
+scripts/package-app-smoke-test.js
+scripts/verify-dark-launch.js
+
+# Documentation and reports
+dev_log/
+
+# GitHub workflow files
+.github/workflows/
