@@ -41,6 +41,8 @@ Tangent-main/*
 Tangent-main/apps/*
 !Tangent-main/apps/tangent-electron/
 Tangent-main/apps/tangent-electron/*
+# Include playwright config for E2E tests
+!Tangent-main/apps/tangent-electron/playwright.config.ts
 # Include required tests for E2E verification
 !Tangent-main/apps/tangent-electron/tests-integration/
 Tangent-main/apps/tangent-electron/tests-integration/*
