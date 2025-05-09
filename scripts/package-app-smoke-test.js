@@ -76,6 +76,11 @@ async function launchApp(enableCodexIntegration, useFileTransport = false) {
 
   if (useFileTransport && MOCK_CODEX_OUT) {
     env.MOCK_CODEX_OUT = MOCK_CODEX_OUT;
+    log(`✅ Setting environment variables for file transport:
+  - INTEGRATION_TEST_USE_FILE_TRANSPORT=${env.INTEGRATION_TEST_USE_FILE_TRANSPORT}
+  - MOCK_CODEX_OUT=${env.MOCK_CODEX_OUT}
+  - MOCK_CODEX_PATH=${env.MOCK_CODEX_PATH}
+`);
   }
 
   // Find the Electron executable

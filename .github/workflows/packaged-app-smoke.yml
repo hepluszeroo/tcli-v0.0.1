@@ -116,5 +116,6 @@ jobs:
             /tmp/codex-*.log
             /tmp/codex-fd.log
             /tmp/codex-main-*.log
+            /tmp/codex-file-transport.log
           retention-days: 7
           if-no-files-found: ignore
