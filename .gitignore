@@ -48,10 +48,11 @@ Tangent-main/apps/tangent-electron/tests-integration/*
 
 codex-main/
 
-# Our new test and diagnostic scripts
-scripts/electron-playwright-stdout-repro.js
-scripts/package-app-smoke-test.js
-scripts/verify-dark-launch.js
+# Our test and diagnostic scripts
+# Previously excluded but now included for CI
+# scripts/electron-playwright-stdout-repro.js
+# scripts/package-app-smoke-test.js
+# scripts/verify-dark-launch.js
 
 # Documentation and reports
 dev_log/
