@@ -1,0 +1,18 @@
+{
+	"extends": "@tsconfig/svelte/tsconfig.json",
+	"compilerOptions": {
+		"outDir": "__build",
+		"sourceMap": true,
+		"baseUrl": "src",
+		"paths": {
+			"@such-n-such/tangent-query-parser": ["empty_stub.ts"],
+            "typewriter-editor": ["stubs/typewriter-editor-shim.ts"],
+            "typewriter-editor/dist/typesetting": ["empty_stub.ts"],
+            "typewriter-editor/dist/rendering/vdom": ["stubs/typewriter-vdom-shim.ts"],
+            "typewriter-editor/dist/*": ["empty_stub.ts"]
+		},
+		"module": "ES2015",
+		"lib": ["ESNext", "DOM"]
+	},
+	"exclude": ["__build", "node_modules", "out", "src/app", "src/main/tests"]
+}

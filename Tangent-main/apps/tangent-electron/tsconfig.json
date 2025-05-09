@@ -1,0 +1,27 @@
+{
+	"extends": "@tsconfig/svelte/tsconfig.json",
+	"compilerOptions": {
+		"outDir": "__build",
+		"sourceMap": true,
+		"baseUrl": "src",
+		"paths": {
+			"svelte/*": ["../node_modules/svelte/src/runtime/*"],
+			"@such-n-such/tangent-query-parser": ["src/empty_stub.ts"],
+			"typewriter-editor": ["src/empty_stub.ts"],
+			"typewriter-editor/dist/typesetting": ["src/empty_stub.ts"],
+			"typewriter-editor/dist/rendering/vdom": ["src/empty_stub.ts"],
+			"typewriter-editor/dist/*": ["src/empty_stub.ts"]
+		},
+		"target": "ES2022",
+		"module": "ES2015",
+		"moduleResolution": "Node",
+		"lib": ["ESNext", "DOM"],
+		"types": ["svelte"],
+		"moduleResolution": "Node",
+		"allowJs": true,
+		"esModuleInterop": true,
+		"strict": false,
+		"verbatimModuleSyntax": false
+	},
+	"exclude": [ "__build", "node_modules", "out", "src/main/tests/**" ]
+}

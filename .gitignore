@@ -75,6 +75,10 @@ Tangent-main/apps/tangent-electron/src/testing/*
 Tangent-main/apps/tangent-electron/src/testing/e2e_stub/*
 !Tangent-main/apps/tangent-electron/src/testing/e2e_stub/webpack.config.js
 
+# Include tsconfig files needed for build
+!Tangent-main/apps/tangent-electron/tsconfig.json
+!Tangent-main/apps/tangent-electron/tsconfig.main.json
+
 # Include stub files needed for Docker build
 !Tangent-main/apps/tangent-electron/scripts/
 Tangent-main/apps/tangent-electron/scripts/*
