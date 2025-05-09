@@ -323,24 +323,44 @@ export default class CodexProcessManager {
   // ---------------- Public API exposed to renderer via ipcMain.handle ----------------
 
   start(): boolean {
-    // Smoke test diagnostics - always log critical environment variables
+    // Smoke test diagnostics - always log critical environment variables for full diagnosis
     const useFileTransportEnv = process.env.INTEGRATION_TEST_USE_FILE_TRANSPORT === '1';
     const mockCodexOutEnv = process.env.MOCK_CODEX_OUT;
-    console.error(`[CPM SMOKE_DEBUG] In start(): INTEGRATION_TEST_USE_FILE_TRANSPORT='${process.env.INTEGRATION_TEST_USE_FILE_TRANSPORT}', MOCK_CODEX_OUT='${mockCodexOutEnv}', Decided useFileTransport: ${useFileTransportEnv}`);
+    const mockCodexPathEnv = process.env.MOCK_CODEX_PATH; // Also log this
+    const enableCodexIntegrationEnv = process.env.ENABLE_CODEX_INTEGRATION === '1'; // And this!
 
-    // Also write to persistent log file for CI artifact collection
+    console.log(`[CPM_SMOKE_DIAG] In start(): ` +
+                `INTEGRATION_TEST_USE_FILE_TRANSPORT='${process.env.INTEGRATION_TEST_USE_FILE_TRANSPORT}', ` +
+                `MOCK_CODEX_OUT='${mockCodexOutEnv}', ` +
+                `MOCK_CODEX_PATH='${mockCodexPathEnv}', ` +
+                `ENABLE_CODEX_INTEGRATION='${process.env.ENABLE_CODEX_INTEGRATION}', ` +
+                `Decided useFileTransport: ${useFileTransportEnv}, ` +
+                `Decided enableCodex: ${enableCodexIntegrationEnv}`);
+
+    // Also log to stderr to ensure visibility in CI logs
+    console.error(`[CPM_SMOKE_DIAG] In start(): ` +
+                `INTEGRATION_TEST_USE_FILE_TRANSPORT='${process.env.INTEGRATION_TEST_USE_FILE_TRANSPORT}', ` +
+                `MOCK_CODEX_OUT='${mockCodexOutEnv}', ` +
+                `MOCK_CODEX_PATH='${mockCodexPathEnv}', ` +
+                `ENABLE_CODEX_INTEGRATION='${process.env.ENABLE_CODEX_INTEGRATION}', ` +
+                `Decided useFileTransport: ${useFileTransportEnv}, ` +
+                `Decided enableCodex: ${enableCodexIntegrationEnv}`);
+
+    // Write to persistent log file for CI artifact collection
     try {
       const fs = require('fs');
-      fs.appendFileSync('/tmp/codex-file-transport-decisions.log',
+      fs.writeFileSync('/tmp/codex-file-transport-decisions.log',
         `[${new Date().toISOString()}] Environment in start():\n` +
         `  INTEGRATION_TEST_USE_FILE_TRANSPORT: '${process.env.INTEGRATION_TEST_USE_FILE_TRANSPORT}'\n` +
         `  MOCK_CODEX_OUT: '${mockCodexOutEnv}'\n` +
+        `  MOCK_CODEX_PATH: '${mockCodexPathEnv}'\n` +
+        `  ENABLE_CODEX_INTEGRATION: '${process.env.ENABLE_CODEX_INTEGRATION}'\n` +
         `  Decided useFileTransport: ${useFileTransportEnv}\n` +
+        `  Decided enableCodex: ${enableCodexIntegrationEnv}\n` +
         `  process.platform: ${process.platform}\n` +
         `  process.argv: ${JSON.stringify(process.argv)}\n` +
         `  __dirname: ${__dirname}\n` +
-        `  process.cwd(): ${process.cwd()}\n` +
-        `  ENABLE_CODEX_INTEGRATION: '${process.env.ENABLE_CODEX_INTEGRATION}'\n\n`
+        `  process.cwd(): ${process.cwd()}\n\n`
       );
     } catch (e) {
       console.error('[codex_process_manager] Error writing debug file:', e);

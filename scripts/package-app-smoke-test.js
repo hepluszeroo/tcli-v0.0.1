@@ -105,7 +105,9 @@ async function launchApp(enableCodexIntegration, useFileTransport = false) {
   log(`✅ Found Electron executable: ${electronPath}`);
 
   // Launch the app
-  log(`Launching app with enableCodexIntegration=${enableCodexIntegration}, useFileTransport=${useFileTransport}`);
+  log(`[SMOKE_SCRIPT] Launching packaged app with executable: ${electronPath}`);
+  log(`[SMOKE_SCRIPT] Launching packaged app with env: ${JSON.stringify(env, null, 2)}`);
+
   const tangentProcess = spawn(electronPath, [TANGENT_DIR], {
     env,
     stdio: 'pipe'
@@ -123,6 +125,13 @@ async function launchApp(enableCodexIntegration, useFileTransport = false) {
     const output = data.toString();
     stdout += output;
 
+    // Immediately log all output to see it in real-time
+    console.log(`[PACKAGED_APP_STDOUT] ${output.trimEnd()}`);
+
+    // Also save to log file for CI artifacts
+    fs.appendFileSync(LOG_FILE, `[PACKAGED_APP_STDOUT] ${output}`);
+
+    // Check for specific markers
     if (output.includes('Codex process started')) {
       sawCodexStart = true;
       log('⚠️ Detected Codex process start');
@@ -132,11 +141,27 @@ async function launchApp(enableCodexIntegration, useFileTransport = false) {
       sawCodexExit = true;
       log('⚠️ Detected Codex process exit');
     }
+
+    // Check for our diagnostic markers
+    if (output.includes('[CPM_SMOKE_DIAG]')) {
+      log(`🔍 Found diagnostic log: ${output.trim()}`);
+    }
   });
 
   tangentProcess.stderr.on('data', (data) => {
     const output = data.toString();
     stderr += output;
+
+    // Immediately log stderr for debugging
+    console.error(`[PACKAGED_APP_STDERR] ${output.trimEnd()}`);
+
+    // Also save to log file for CI artifacts
+    fs.appendFileSync(LOG_FILE, `[PACKAGED_APP_STDERR] ${output}`);
+
+    // Check for our diagnostic markers in stderr too
+    if (output.includes('[CPM_SMOKE_DIAG]')) {
+      log(`🔍 Found diagnostic log in stderr: ${output.trim()}`);
+    }
   });
 
   // Set a timeout to kill the process
