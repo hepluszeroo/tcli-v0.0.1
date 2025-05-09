@@ -71,3 +71,16 @@ jobs:
           name: smoke-test-logs-${{ matrix.os }}
           path: /tmp/tangent-smoke-test-*.log
           retention-days: 7
+
+      - name: Upload additional debug logs (macOS only)
+        uses: actions/upload-artifact@v4
+        if: runner.os == 'macOS' && (failure() || success())
+        with:
+          name: additional-debug-logs-${{ matrix.os }}
+          path: |
+            /tmp/mock-codex-debug.log
+            /tmp/codex-*.log
+            /tmp/codex-fd.log
+            /tmp/codex-main-*.log
+          retention-days: 7
+          if-no-files-found: ignore

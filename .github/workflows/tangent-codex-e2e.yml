@@ -72,6 +72,19 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.os }}
           path: Tangent-main/apps/tangent-electron/playwright-report/
           retention-days: 14
+
+      - name: Upload mock Codex debug logs (macOS only)
+        uses: actions/upload-artifact@v4
+        if: runner.os == 'macOS' && (failure() || success())
+        with:
+          name: mock-codex-debug-${{ matrix.os }}
+          path: |
+            /tmp/mock-codex-debug.log
+            /tmp/codex-*.log
+            /tmp/codex-fd.log
+            /tmp/codex-main-*.log
+          retention-days: 7
+          if-no-files-found: ignore
