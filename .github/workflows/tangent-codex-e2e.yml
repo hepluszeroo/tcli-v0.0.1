@@ -30,7 +30,8 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
+          cache: pnpm
 
       - name: Debug Workspace Layout
         run: |
@@ -87,14 +88,18 @@ jobs:
         run: |
           if [ "$RUNNER_OS" == "macOS" ]; then
             # Run directly on macOS with file transport enabled
-            INTEGRATION_TEST_USE_FILE_TRANSPORT=1 pnpm --filter tangent_electron exec playwright test tests-integration/codex_* --workers 1
+            INTEGRATION_TEST_USE_FILE_TRANSPORT=1 CODEX_DEBUG_TIMERS=1 DUMP_HANDLES=1 pnpm --filter tangent_electron exec playwright test tests-integration/codex_* --workers 1
           else
-            # Run Docker container on Linux
+            # Run Docker container on Linux with Xvfb for display server
             docker run --rm \
               --platform linux/amd64 \
               -e PLAYWRIGHT_IN_DOCKER=1 \
               -e DEBUG=codex \
-              tangent-codex-tests:amd64
+              -e CODEX_DEBUG_TIMERS=1 \
+              -e DUMP_HANDLES=1 \
+              tangent-codex-tests:amd64 \
+              xvfb-run --server-num=99 --server-args="-screen 0 1280x720x24" \
+              pnpm exec playwright test tests-integration/codex_* --workers 1
           fi
 
       - name: Upload test report
