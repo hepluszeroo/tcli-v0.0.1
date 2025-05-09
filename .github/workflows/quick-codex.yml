@@ -53,12 +53,12 @@ jobs:
             # Run directly on macOS with file transport enabled
             cd Tangent-main/apps/tangent-electron
             echo "DEBUG: Running Playwright from $(pwd)"
-            echo "DEBUG: Glob pattern being passed: \"./tests-integration/codex_*.test.ts\""
+            echo "DEBUG: Using regex filter 'tests-integration/codex_.*.test.ts' for Playwright discovery"
             ls -la tests-integration/
-            echo "Attempting to run Playwright..."
+            echo "Attempting to run Playwright (regex argument)..."
             echo "Attempting to run Playwright with DEBUG flags and explicit config..."
             DEBUG=pw:api,pw:test,codex,main,mock-codex INTEGRATION_TEST_USE_FILE_TRANSPORT=1 CODEX_DEBUG_TIMERS=1 DUMP_HANDLES=1 \
-            pnpm exec playwright test --config=./playwright.config.ts "./tests-integration/codex_*.test.ts" --workers 1 --reporter=list
+            pnpm exec playwright test --config=./playwright.config.ts "tests-integration/codex_.*\\.test\\.ts" --workers 1 --reporter=list
 
             # If the above doesn't work, try a single test file:
             echo "\nAttempting to run a single test file as a fallback..."
@@ -78,5 +78,8 @@ jobs:
               -e DUMP_HANDLES=1 \
               tangent-codex-tests \
               xvfb-run --server-num=99 --server-args="-screen 0 1280x720x24" \
-              DEBUG=pw:api,pw:test,codex,main,mock-codex pnpm exec playwright test --config=./playwright.config.ts "tests-integration/codex_*.test.ts" --workers 1 --reporter=list
+              DEBUG=pw:api,pw:test,codex,main,mock-codex pnpm exec playwright test \
+                --config=./Tangent-main/apps/tangent-electron/playwright.config.ts \
+                "Tangent-main/apps/tangent-electron/tests-integration/codex_.*\\.test\\.ts" \
+                --workers 1 --reporter=list
           fi
