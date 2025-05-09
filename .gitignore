@@ -63,12 +63,14 @@ Tangent-main/apps/tangent-electron/src/main/*
 !Tangent-main/apps/tangent-electron/src/main/Workspace.ts
 !Tangent-main/apps/tangent-electron/src/main/settings.ts
 !Tangent-main/apps/tangent-electron/src/main/webpack.config.js
+!Tangent-main/apps/tangent-electron/src/main/codex_process_manager.ts
 !Tangent-main/apps/tangent-electron/src/app/
 Tangent-main/apps/tangent-electron/src/app/*
 !Tangent-main/apps/tangent-electron/src/app/webpack.config.js
 !Tangent-main/apps/tangent-electron/src/preload/
 Tangent-main/apps/tangent-electron/src/preload/*
 !Tangent-main/apps/tangent-electron/src/preload/webpack.config.js
+!Tangent-main/apps/tangent-electron/src/preload/index.ts
 !Tangent-main/apps/tangent-electron/src/testing/
 Tangent-main/apps/tangent-electron/src/testing/*
 !Tangent-main/apps/tangent-electron/src/testing/e2e_stub/
