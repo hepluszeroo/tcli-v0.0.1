@@ -1,0 +1,45 @@
+name: Dark Launch Verification
+
+on:
+  push:
+    branches: [main, feat/*, fix/*]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  verify-dark-launch:
+    name: Verify Dark Launch Configuration
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run dark launch verification
+        run: |
+          chmod +x scripts/verify-dark-launch.js
+          node scripts/verify-dark-launch.js
+
+      - name: Upload verification logs
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: dark-launch-verify-logs
+          path: /tmp/dark-launch-*.log
+          retention-days: 7

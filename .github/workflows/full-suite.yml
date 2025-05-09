@@ -1,0 +1,59 @@
+name: full-suite-nightly
+
+on:
+  schedule:
+    - cron: '0 3 * * *'  # every night at 03:00 UTC
+  pull_request:
+    branches: [main]
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  full:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        include:
+          - os: macos-latest
+            env:
+              INTEGRATION_TEST_USE_FILE_TRANSPORT: 1
+    runs-on: ${{ matrix.os }}
+    env:
+      DEBUG: codex
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'pnpm'
+
+      - name: Install PNPM
+        run: npm i -g pnpm@8
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Build E2E bundle
+        run: pnpm --filter tangent_electron run build:test-e2e
+
+      - name: Build Docker image (no cache, Linux only)
+        if: runner.os == 'Linux'
+        run: |
+          docker build --no-cache \
+            --build-arg STUB_HASH=$(git rev-parse HEAD) \
+            -f Dockerfile.playwright -t tangent-codex-tests .
+
+      - name: Run full Playwright suite (26 tests)
+        run: |
+          if [ "$RUNNER_OS" == "macOS" ]; then
+            # Run directly on macOS with file transport enabled
+            INTEGRATION_TEST_USE_FILE_TRANSPORT=1 pnpm --filter tangent_electron exec playwright test --workers 1
+          else
+            # Run Docker container on Linux
+            docker run --rm \
+              -e PLAYWRIGHT_IN_DOCKER=1 \
+              -e DEBUG=codex \
+              tangent-codex-tests \
+              pnpm exec playwright test --workers 1
+          fi

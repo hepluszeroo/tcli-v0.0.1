@@ -1,0 +1,75 @@
+name: Tangent Codex E2E Tests
+
+on:
+  push:
+    branches: [main, feat/*, fix/*]
+  pull_request:
+    branches: [main]
+
+jobs:
+  e2e-tests:
+    name: E2E Codex Integration Tests
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        include:
+          - os: macos-latest
+            env:
+              INTEGRATION_TEST_USE_FILE_TRANSPORT: 1
+    runs-on: ${{ matrix.os }}
+    env:
+      DEBUG: codex
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Build Docker image (Linux only)
+        id: docker_build
+        if: runner.os == 'Linux'
+        run: |
+          docker build --platform linux/amd64 -f Dockerfile.playwright -t tangent-codex-tests:amd64 .
+
+      - name: Handle Docker build failure (Linux only)
+        if: runner.os == 'Linux' && failure() && steps.docker_build.outcome == 'failure'
+        run: |
+          echo "::error::Docker build failed. Check Dockerfile.playwright and build scripts."
+          exit 1
+
+      - name: Build E2E bundle (macOS only)
+        if: runner.os == 'macOS'
+        run: pnpm --filter tangent_electron run build:test-e2e
+
+      - name: Run Codex integration tests
+        run: |
+          if [ "$RUNNER_OS" == "macOS" ]; then
+            # Run directly on macOS with file transport enabled
+            INTEGRATION_TEST_USE_FILE_TRANSPORT=1 pnpm --filter tangent_electron exec playwright test tests-integration/codex_* --workers 1
+          else
+            # Run Docker container on Linux
+            docker run --rm \
+              --platform linux/amd64 \
+              -e PLAYWRIGHT_IN_DOCKER=1 \
+              -e DEBUG=codex \
+              tangent-codex-tests:amd64
+          fi
+
+      - name: Upload test report
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: playwright-report
+          path: Tangent-main/apps/tangent-electron/playwright-report/
+          retention-days: 14

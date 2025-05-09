@@ -1,0 +1,59 @@
+name: Codex E2E (Playwright)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  playwright:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        include:
+          - os: macos-latest
+            env:
+              INTEGRATION_TEST_USE_FILE_TRANSPORT: 1
+    runs-on: ${{ matrix.os }}
+    env:
+      DEBUG: codex
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'pnpm'
+
+      - name: Install PNPM
+        run: npm i -g pnpm@8
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Build E2E bundle
+        run: pnpm --filter tangent_electron run build:test-e2e
+
+      - name: Set up Docker Buildx (Linux only)
+        if: runner.os == 'Linux'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build E2E image (Linux only)
+        if: runner.os == 'Linux'
+        run: docker build -f Dockerfile.playwright -t tangent-codex-tests .
+
+      - name: Run Playwright Codex suite
+        run: |
+          if [ "$RUNNER_OS" == "macOS" ]; then
+            # Run directly on macOS with file transport enabled
+            INTEGRATION_TEST_USE_FILE_TRANSPORT=1 pnpm --filter tangent_electron exec playwright test tests-integration/codex_* --workers 1
+          else
+            # Run Docker container on Linux
+            docker run --rm \
+              -e PLAYWRIGHT_IN_DOCKER=1 \
+              -e DEBUG=codex \
+              tangent-codex-tests
+          fi

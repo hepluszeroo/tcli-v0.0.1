@@ -32,7 +32,20 @@ dist/
 .history/
 
 # Submodules - these are separate git repositories
-Tangent-main/
+# But exclude the specific files we modified
+Tangent-main/*
+!Tangent-main/apps/
+Tangent-main/apps/*
+!Tangent-main/apps/tangent-electron/
+Tangent-main/apps/tangent-electron/*
+!Tangent-main/apps/tangent-electron/tests-integration/
+Tangent-main/apps/tangent-electron/tests-integration/*
+!Tangent-main/apps/tangent-electron/tests-integration/codex_happy_path.test.ts
+!Tangent-main/apps/tangent-electron/tests-integration/codex_oversize.test.ts
+!Tangent-main/apps/tangent-electron/tests-integration/codex_quit_cleanup.test.ts
+!Tangent-main/apps/tangent-electron/tests-integration/codex_toggle.test.ts
+!Tangent-main/apps/tangent-electron/tests-integration/electronHarness.ts
+
 codex-main/
 
 # Our new test and diagnostic scripts
@@ -43,5 +56,10 @@ scripts/verify-dark-launch.js
 # Documentation and reports
 dev_log/
 
-# GitHub workflow files
-.github/workflows/
+# GitHub workflow files - Include specific ones
+.github/workflows/*
+!.github/workflows/full-suite.yml
+!.github/workflows/packaged-app-smoke.yml
+!.github/workflows/dark-launch-verify.yml
+!.github/workflows/tangent-codex-e2e.yml
+!.github/workflows/codex-e2e.yml

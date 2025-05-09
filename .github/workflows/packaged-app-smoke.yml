@@ -1,0 +1,72 @@
+name: Packaged App Smoke Test
+
+on:
+  push:
+    branches: [main, feat/*, fix/*]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  smoke-test:
+    name: Packaged App Smoke Test
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        include:
+          - os: macos-latest
+            env:
+              INTEGRATION_TEST_USE_FILE_TRANSPORT: 1
+    runs-on: ${{ matrix.os }}
+    env:
+      DEBUG: codex
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: |
+          npm install
+          npm install -g electron
+
+      - name: Build for smoke test
+        run: |
+          # Basic build command for test - adapt as needed
+          if [ "$RUNNER_OS" == "macOS" ]; then
+            echo "Building for macOS"
+            # Mac-specific build steps if needed
+          else
+            echo "Building for Linux"
+            # Linux-specific build steps if needed
+          fi
+
+      - name: Run packaged app smoke test
+        run: |
+          chmod +x scripts/package-app-smoke-test.js
+          # Set environment variables as needed
+          if [ "$RUNNER_OS" == "macOS" ]; then
+            INTEGRATION_TEST_USE_FILE_TRANSPORT=1 node scripts/package-app-smoke-test.js
+          else
+            node scripts/package-app-smoke-test.js
+          fi
+
+      - name: Upload test logs
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: smoke-test-logs-${{ matrix.os }}
+          path: /tmp/tangent-smoke-test-*.log
+          retention-days: 7
