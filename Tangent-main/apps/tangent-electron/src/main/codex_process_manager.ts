@@ -323,6 +323,29 @@ export default class CodexProcessManager {
   // ---------------- Public API exposed to renderer via ipcMain.handle ----------------
 
   start(): boolean {
+    // Smoke test diagnostics - always log critical environment variables
+    const useFileTransportEnv = process.env.INTEGRATION_TEST_USE_FILE_TRANSPORT === '1';
+    const mockCodexOutEnv = process.env.MOCK_CODEX_OUT;
+    console.error(`[CPM SMOKE_DEBUG] In start(): INTEGRATION_TEST_USE_FILE_TRANSPORT='${process.env.INTEGRATION_TEST_USE_FILE_TRANSPORT}', MOCK_CODEX_OUT='${mockCodexOutEnv}', Decided useFileTransport: ${useFileTransportEnv}`);
+
+    // Also write to persistent log file for CI artifact collection
+    try {
+      const fs = require('fs');
+      fs.appendFileSync('/tmp/codex-file-transport-decisions.log',
+        `[${new Date().toISOString()}] Environment in start():\n` +
+        `  INTEGRATION_TEST_USE_FILE_TRANSPORT: '${process.env.INTEGRATION_TEST_USE_FILE_TRANSPORT}'\n` +
+        `  MOCK_CODEX_OUT: '${mockCodexOutEnv}'\n` +
+        `  Decided useFileTransport: ${useFileTransportEnv}\n` +
+        `  process.platform: ${process.platform}\n` +
+        `  process.argv: ${JSON.stringify(process.argv)}\n` +
+        `  __dirname: ${__dirname}\n` +
+        `  process.cwd(): ${process.cwd()}\n` +
+        `  ENABLE_CODEX_INTEGRATION: '${process.env.ENABLE_CODEX_INTEGRATION}'\n\n`
+      );
+    } catch (e) {
+      console.error('[codex_process_manager] Error writing debug file:', e);
+    }
+
     // Log MOCK_CODEX_OUT early for diagnostics
     if (process.env.MOCK_CODEX_OUT && process.env.DEBUG?.includes('codex')) {
       console.log('[codex_process_manager] Detected MOCK_CODEX_OUT env', process.env.MOCK_CODEX_OUT)
@@ -630,6 +653,22 @@ export default class CodexProcessManager {
       // CRITICAL UPDATE: Force file transport to be enabled regardless of platform so it works in packaged tests
       const useFileTransport = process.env.INTEGRATION_TEST_USE_FILE_TRANSPORT === '1';
       const tailPath = process.env.MOCK_CODEX_OUT;
+
+      // SMOKE TEST DEBUG: Log what we're doing with file transport specifically
+      console.error(`[CPM SMOKE_DEBUG] File transport check: useFileTransport=${useFileTransport}, tailPath=${tailPath}, platform=${process.platform}`);
+      // Write the same info to a persistent file for debugging in smoke tests
+      try {
+        const fs = require('fs');
+        fs.appendFileSync('/tmp/codex-smoke-transport.log',
+          `[${new Date().toISOString()}] File transport check:\n` +
+          `  useFileTransport: ${useFileTransport}\n` +
+          `  tailPath: ${tailPath}\n` +
+          `  platform: ${process.platform}\n` +
+          `  will activate file transport: ${useFileTransport && tailPath ? 'YES' : 'NO'}\n\n`
+        );
+      } catch (e) {
+        console.error('[codex_process_manager] Failed to write transport debug log:', e);
+      }
 
       // Enhanced diagnostic logging - critical for debugging file transport issues
       try {

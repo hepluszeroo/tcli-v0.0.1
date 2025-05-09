@@ -71,7 +71,9 @@ async function launchApp(enableCodexIntegration, useFileTransport = false) {
     ...process.env,
     TANGENT_TEST_MODE: '1',
     MOCK_CODEX_PATH: path.join(__dirname, 'mock_codex_headless.js'),
-    INTEGRATION_TEST_USE_FILE_TRANSPORT: useFileTransport ? '1' : '0'
+    INTEGRATION_TEST_USE_FILE_TRANSPORT: useFileTransport ? '1' : '0',
+    ENABLE_CODEX_INTEGRATION: enableCodexIntegration ? '1' : '0',
+    DEBUG: 'codex'  // Enable codex debug logging
   };
 
   if (useFileTransport && MOCK_CODEX_OUT) {
@@ -80,6 +82,8 @@ async function launchApp(enableCodexIntegration, useFileTransport = false) {
   - INTEGRATION_TEST_USE_FILE_TRANSPORT=${env.INTEGRATION_TEST_USE_FILE_TRANSPORT}
   - MOCK_CODEX_OUT=${env.MOCK_CODEX_OUT}
   - MOCK_CODEX_PATH=${env.MOCK_CODEX_PATH}
+  - ENABLE_CODEX_INTEGRATION=${env.ENABLE_CODEX_INTEGRATION}
+  - DEBUG=${env.DEBUG}
 `);
   }
 

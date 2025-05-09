@@ -52,7 +52,7 @@ jobs:
         run: |
           if [ "$RUNNER_OS" == "macOS" ]; then
             # Run directly on macOS with file transport enabled
-            INTEGRATION_TEST_USE_FILE_TRANSPORT=1 pnpm --filter tangent_electron exec playwright test tests-integration/codex_*.test.ts --workers 1
+            INTEGRATION_TEST_USE_FILE_TRANSPORT=1 pnpm --filter tangent_electron exec playwright test tests-integration/codex_*.ts --workers 1
           else
             # Run Docker container on Linux
             docker run --rm \
@@ -62,5 +62,5 @@ jobs:
               -e DUMP_HANDLES=1 \
               tangent-codex-tests \
               xvfb-run --server-num=99 --server-args="-screen 0 1280x720x24" \
-              pnpm exec playwright test tests-integration/codex_*.test.ts --workers 1
+              pnpm exec playwright test tests-integration/codex_*.ts --workers 1
           fi
