@@ -1,0 +1,221 @@
+import { _electron, ElectronApplication } from '@playwright/test'
+import path from 'path'
+import fs from 'fs'
+import os from 'os'
+
+function fsExists(p: string): boolean {
+  try { return fs.existsSync(p) } catch { return false }
+}
+
+export async function launchElectron(opts: {
+  electronBinary: string
+  buildDir: string
+  mainEntry: string
+  workspace?: string
+  env: NodeJS.ProcessEnv
+  timeout?: number
+}): Promise<{ app: ElectronApplication; child?: any }> {
+  const { buildDir, mainEntry, workspace, env } = opts
+
+  // Define common flags that are always needed
+  const commonFlags = [
+    '--no-sandbox', 
+    '--disable-gpu', 
+    '--remote-debugging-port=0'
+  ];
+  
+  // Special environment variables for Electron
+  const electronEnv = {
+    ...env,
+    ELECTRON_ENABLE_LOGGING: '1',
+    // IMPORTANT: Disable sandbox but DON'T set ELECTRON_RUN_AS_NODE
+    ELECTRON_DISABLE_SANDBOX: '1'
+  }
+
+  // ---------------------------------------------------------------
+  // Determine if we need to use file-based transport as a workaround for the
+  // Electron stdout pipe bug. This can be controlled via the
+  // INTEGRATION_TEST_USE_FILE_TRANSPORT environment variable.
+  // ---------------------------------------------------------------
+  const useFileTransport = process.env.INTEGRATION_TEST_USE_FILE_TRANSPORT === '1' ||
+                          // Default to using file transport on macOS as that's where we've seen the issue
+                          (process.platform === 'darwin' && process.env.INTEGRATION_TEST_USE_FILE_TRANSPORT !== '0');
+
+  // Set environment variable for Electron process to read
+  electronEnv.INTEGRATION_TEST_USE_FILE_TRANSPORT = useFileTransport ? '1' : '0';
+
+  console.log('[electronHarness] File-based transport:', useFileTransport ? 'ENABLED' : 'DISABLED');
+
+  let tmpOutPath: string | null = null;
+
+  if (useFileTransport) {
+    // ---------------------------------------------------------------
+    // Temporary file path for Codex mock output (workaround for Electron
+    // stdout pipe bug). The manager in main process will tail this file.
+    // ---------------------------------------------------------------
+    tmpOutPath = path.join(os.tmpdir(), `codex-${Date.now()}-${Math.random().toString(16).slice(2)}.ndjson`);
+
+    // Explicitly create the file now to ensure it exists and has permissions
+    try {
+      // Create an empty file - don't add any comments as they cause NDJSON parse errors
+      fs.writeFileSync(tmpOutPath, '');
+      console.log('[electronHarness] Successfully created MOCK_CODEX_OUT file:', tmpOutPath);
+
+      // Verify that the file was actually created
+      const fileExists = fs.existsSync(tmpOutPath);
+      console.log('[electronHarness] File exists check:', fileExists);
+
+      // Check file permissions and size
+      const stats = fs.statSync(tmpOutPath);
+      console.log('[electronHarness] File stats:', {
+        size: stats.size,
+        mode: stats.mode.toString(8),
+        uid: stats.uid,
+        gid: stats.gid
+      });
+    } catch (err) {
+      console.error('[electronHarness] ERROR creating MOCK_CODEX_OUT file:', err);
+      // Don't throw, continue with the test
+    }
+
+    electronEnv.MOCK_CODEX_OUT = tmpOutPath;
+    console.log('[electronHarness] Using MOCK_CODEX_OUT file:', tmpOutPath);
+
+    // Ensure the variable is also present in the Node process that launches
+    // Electron so Electron-main inherits it directly via process.env.
+    process.env.MOCK_CODEX_OUT = tmpOutPath;
+  }
+
+  // -------------------------------------------------------------------
+  // If using file transport, ensure the mock receives the --out <file> flag
+  // via MOCK_CODEX_ARGS. Combine with any existing JSON-token args already present.
+  // -------------------------------------------------------------------
+
+  const existingArgs = (process.env.MOCK_CODEX_ARGS ?? '').trim();
+  let finalMockArgs = existingArgs;
+
+  // Only append the --out flag if we're using file transport
+  if (useFileTransport && tmpOutPath) {
+    const outFlag = `--out ${tmpOutPath}`;
+    // Build the final argument string that includes the --out flag when file transport is enabled.
+    // If the caller already provided some extra args via env we append the flag;
+    // otherwise we start with just the flag.
+    finalMockArgs = existingArgs ? `${existingArgs} ${outFlag}` : outFlag;
+  }
+
+  // Store it in both the environment we pass to Electron *and* in the current
+  // process.env so any subsequent logic executed in this harness can see the up-to-date value.
+  electronEnv.MOCK_CODEX_ARGS = finalMockArgs;
+  process.env.MOCK_CODEX_ARGS = finalMockArgs;
+
+  console.log('[electronHarness] Final MOCK_CODEX_ARGS:', finalMockArgs);
+
+  // ---------------------------------------------------------------------
+  // Guarantee that the Electron main process knows the *absolute* path to
+  // a usable Node executable.  On macOS the helper process inherits a very
+  // limited PATH that is often missing Homebrew / nvm locations, causing
+  // `spawn('node', …)` to throw ENOENT.  By forwarding the host’s
+  // `process.execPath` (which is always an absolute path to Node when this
+  // harness itself runs under Node) we make the binary discoverable without
+  // touching global PATH.
+  // ---------------------------------------------------------------------
+
+  if (!electronEnv.NODE_BINARY) {
+    electronEnv.NODE_BINARY = process.execPath
+  }
+  
+  // Make sure MOCK_CODEX_PATH is available to the Electron process
+  if (process.env.MOCK_CODEX_PATH) {
+    console.log('[electronHarness] Forwarding MOCK_CODEX_PATH:', process.env.MOCK_CODEX_PATH);
+    electronEnv.MOCK_CODEX_PATH = process.env.MOCK_CODEX_PATH;
+  }
+  
+  // -----------------------------------------------------------------
+  // Extract the JSON literals from the final mock-args we just built so
+  // the Electron main process can parse them without splitting on the
+  // `--out` flag.
+  // -----------------------------------------------------------------
+  if (electronEnv.MOCK_CODEX_ARGS) {
+    console.log('[electronHarness] Forwarding MOCK_CODEX_ARGS:', electronEnv.MOCK_CODEX_ARGS);
+
+    const extraJsonTokens = electronEnv.MOCK_CODEX_ARGS.match(/({[^}]+})/g) ?? [];
+    if (extraJsonTokens.length > 0) {
+      console.log('[electronHarness] Extracted JSON tokens:', extraJsonTokens);
+      electronEnv.MOCK_CODEX_JSON_TOKENS = JSON.stringify(extraJsonTokens);
+    }
+  }
+  
+  // Additional Docker environment variables
+  if (process.env.PLAYWRIGHT_IN_DOCKER === '1') {
+    console.log('[electronHarness] Running in Docker container');
+
+    // (PathHelpers now centralize MOCK_CODEX_PATH; no manual override needed here)
+
+    Object.assign(electronEnv, {
+      ELECTRON_NO_ATTACH_CONSOLE: '1',
+      ELECTRON_ENABLE_STACK_DUMPING: '1',
+      DEBUG: '1' // Enable debug logging
+    })
+  }
+  
+  // Make sure we're NOT running as Node.js
+  if ('ELECTRON_RUN_AS_NODE' in electronEnv) {
+    delete electronEnv.ELECTRON_RUN_AS_NODE;
+    console.log('[electronHarness] Removed ELECTRON_RUN_AS_NODE to ensure running in Chromium mode');
+  }
+
+  // Ensure we're using the correct build directory that exists
+  let actualBuildDir = buildDir;
+  if (process.env.PLAYWRIGHT_IN_DOCKER === '1') {
+    // In Docker, make sure we're using the tangent-electron/__build directory
+    actualBuildDir = '/repo/Tangent-main/apps/tangent-electron/__build';
+    console.log(`[electronHarness] Docker environment detected. Using build dir: ${actualBuildDir}`);
+    
+    // Check if directory exists
+    try {
+      const exists = fs.existsSync(actualBuildDir);
+      console.log(`[electronHarness] Build directory exists: ${exists}`);
+      if (!exists) {
+        console.log(`[electronHarness] Fallback: checking symlink at ${buildDir}`);
+        console.log(`[electronHarness] Symlink exists: ${fs.existsSync(buildDir)}`);
+      }
+    } catch (e) {
+      console.error(`[electronHarness] Error checking build directory:`, e);
+    }
+  }
+
+  // -------------------------------------------------------------------
+  // Prepare final arg list: minimal required flags + entry script.
+  // Playwright needs --remote-debugging-port=0 to capture the websocket.
+  // Keep --no-sandbox / --disable-gpu for container stability.
+  // -------------------------------------------------------------------
+  const finalArgs = [
+    ...commonFlags,
+    path.join(actualBuildDir, 'bundle', 'main.js'),
+    ...(workspace ? [workspace] : [])
+  ]
+  
+  // Note: The main.js loaded here is now using the real preload.js bundle
+  // which provides window.api.* interfaces needed by the Codex integration tests
+  
+  console.log('[electronHarness] Launching Electron with args:', finalArgs)
+  console.log('[electronHarness] CWD:', actualBuildDir)
+
+  try {
+    const app = await _electron.launch({
+      executablePath: opts.electronBinary,
+      // Use the real build directory as working directory; passing a non-
+      // existent cwd causes Electron to abort before any user code runs.
+      cwd: actualBuildDir,
+      args: finalArgs,
+      env: electronEnv
+    });
+    
+    // Return the app interface (no child process handle needed)
+    return { app };
+    
+  } catch (error) {
+    console.error('Failed to launch Electron:', error);
+    throw error;
+  }
+}
