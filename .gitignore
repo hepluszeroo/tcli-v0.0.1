@@ -49,6 +49,7 @@ Tangent-main/apps/tangent-electron/tests-integration/*
 !Tangent-main/apps/tangent-electron/tests-integration/codex_quit_cleanup.test.ts
 !Tangent-main/apps/tangent-electron/tests-integration/codex_toggle.test.ts
 !Tangent-main/apps/tangent-electron/tests-integration/electronHarness.ts
+!Tangent-main/apps/tangent-electron/tests-integration/pathHelpers.ts
 
 # Include required source files needed for verification scripts
 !Tangent-main/apps/tangent-electron/src/
