@@ -51,7 +51,12 @@ jobs:
         run: |
           if [ "$RUNNER_OS" == "macOS" ]; then
             # Run directly on macOS with file transport enabled
-            INTEGRATION_TEST_USE_FILE_TRANSPORT=1 CODEX_DEBUG_TIMERS=1 DUMP_HANDLES=1 pnpm --filter tangent_electron exec playwright test "tests-integration/codex_*.ts" --workers 1 --reporter=list
+            cd Tangent-main/apps/tangent-electron
+            echo "Current working directory: $(pwd)"
+            echo "Listing contents of tests-integration/:"
+            ls -la tests-integration/
+            echo "Attempting to run Playwright..."
+            INTEGRATION_TEST_USE_FILE_TRANSPORT=1 CODEX_DEBUG_TIMERS=1 DUMP_HANDLES=1 pnpm exec playwright test "tests-integration/codex_*.ts" --workers 1 --reporter=list
           else
             # Run Docker container on Linux with Xvfb for display server
             docker run --rm \
