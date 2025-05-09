@@ -62,6 +62,18 @@ Tangent-main/apps/tangent-electron/src/common/settings/*
 Tangent-main/apps/tangent-electron/src/main/*
 !Tangent-main/apps/tangent-electron/src/main/Workspace.ts
 !Tangent-main/apps/tangent-electron/src/main/settings.ts
+!Tangent-main/apps/tangent-electron/src/main/webpack.config.js
+!Tangent-main/apps/tangent-electron/src/app/
+Tangent-main/apps/tangent-electron/src/app/*
+!Tangent-main/apps/tangent-electron/src/app/webpack.config.js
+!Tangent-main/apps/tangent-electron/src/preload/
+Tangent-main/apps/tangent-electron/src/preload/*
+!Tangent-main/apps/tangent-electron/src/preload/webpack.config.js
+!Tangent-main/apps/tangent-electron/src/testing/
+Tangent-main/apps/tangent-electron/src/testing/*
+!Tangent-main/apps/tangent-electron/src/testing/e2e_stub/
+Tangent-main/apps/tangent-electron/src/testing/e2e_stub/*
+!Tangent-main/apps/tangent-electron/src/testing/e2e_stub/webpack.config.js
 
 # Include stub files needed for Docker build
 !Tangent-main/apps/tangent-electron/scripts/
