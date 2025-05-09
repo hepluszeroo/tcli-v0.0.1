@@ -31,7 +31,8 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
+          cache: pnpm
 
       - name: Debug Workspace Layout
         run: |
@@ -84,10 +85,17 @@ jobs:
           # Set environment variables as needed
           if [ "$RUNNER_OS" == "macOS" ]; then
             echo "Running smoke test on macOS with file transport enabled"
-            MOCK_CODEX_PATH=$(pwd)/scripts/mock_codex_headless.js INTEGRATION_TEST_USE_FILE_TRANSPORT=1 node scripts/package-app-smoke-test.js
+            MOCK_CODEX_PATH=$(pwd)/scripts/mock_codex_headless.js \
+            INTEGRATION_TEST_USE_FILE_TRANSPORT=1 \
+            CODEX_DEBUG_TIMERS=1 \
+            DUMP_HANDLES=1 \
+            DEBUG=codex \
+            node scripts/package-app-smoke-test.js --debug
           else
             echo "Running smoke test on Linux"
-            MOCK_CODEX_PATH=$(pwd)/scripts/mock_codex_headless.js node scripts/package-app-smoke-test.js
+            MOCK_CODEX_PATH=$(pwd)/scripts/mock_codex_headless.js \
+            DEBUG=codex \
+            node scripts/package-app-smoke-test.js
           fi
 
       - name: Upload test logs

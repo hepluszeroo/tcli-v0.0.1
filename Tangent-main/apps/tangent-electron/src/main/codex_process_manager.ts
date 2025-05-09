@@ -630,6 +630,15 @@ export default class CodexProcessManager {
       const useFileTransport = process.env.INTEGRATION_TEST_USE_FILE_TRANSPORT === '1';
       const tailPath = process.env.MOCK_CODEX_OUT;
 
+      // Diagnostic logging for file transport decision
+      console.error('[codex_process_manager] File Transport Decision:', {
+        useFileTransport,
+        tailPath,
+        platform: process.platform,
+        INTEGRATION_TEST_USE_FILE_TRANSPORT: process.env.INTEGRATION_TEST_USE_FILE_TRANSPORT,
+        MOCK_CODEX_OUT: process.env.MOCK_CODEX_OUT
+      });
+
       if (useFileTransport && tailPath && !this.tailTimer) {
         console.error('[codex main] Tail-file mode enabled', tailPath);
         this.tailOffset = 0;

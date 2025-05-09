@@ -1,0 +1,65 @@
+name: quick-codex
+
+on:
+  pull_request:
+    paths:
+      - 'Tangent-main/**'
+      - 'Dockerfile.playwright'
+      - '.github/workflows/quick-codex.yml'
+
+jobs:
+  codex:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        include:
+          - os: macos-latest
+            env:
+              INTEGRATION_TEST_USE_FILE_TRANSPORT: 1
+    runs-on: ${{ matrix.os }}
+    env:
+      DEBUG: codex
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+          run_install: false
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Build E2E bundle
+        run: pnpm --filter tangent_electron run build:test-e2e
+
+      - name: Build Docker image (no cache)
+        if: runner.os == 'Linux'
+        run: |
+          docker build --no-cache \
+            --build-arg STUB_HASH=$(git rev-parse HEAD) \
+            -f Dockerfile.playwright -t tangent-codex-tests .
+
+      - name: Run quick Codex suite
+        run: |
+          if [ "$RUNNER_OS" == "macOS" ]; then
+            # Run directly on macOS with file transport enabled
+            INTEGRATION_TEST_USE_FILE_TRANSPORT=1 CODEX_DEBUG_TIMERS=1 DUMP_HANDLES=1 pnpm --filter tangent_electron exec playwright test tests-integration/**/*.test.ts --workers 1
+          else
+            # Run Docker container on Linux with Xvfb for display server
+            docker run --rm \
+              -e PLAYWRIGHT_IN_DOCKER=1 \
+              -e DEBUG=codex \
+              -e CODEX_DEBUG_TIMERS=1 \
+              -e DUMP_HANDLES=1 \
+              tangent-codex-tests \
+              xvfb-run --server-num=99 --server-args="-screen 0 1280x720x24" \
+              pnpm exec playwright test tests-integration/**/*.test.ts --workers 1
+          fi
