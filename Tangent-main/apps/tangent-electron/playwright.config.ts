@@ -9,18 +9,22 @@ import { defineConfig } from '@playwright/test'
 import type { TangentOptions } from './tests-integration/tangent'
 
 export default defineConfig<TangentOptions>({
+	// Restrict Playwright's test discovery to the dedicated integration test
+	// directory. This avoids accidental matches elsewhere (e.g. unit/benchmark
+	// folders) and makes CLI path filters simpler across CI platforms.
+	testDir: './tests-integration',
 	projects: [
 		{
 			name: 'Tests',
-			testMatch: /.*tests-integration.*\.test\.(ts)/,
+			testMatch: /.*\.test\.(ts)/,
 		},
 		{
 			name: 'Benchmarks',
-			testMatch: /.*tests-integration.*\.bench\.(ts)/,
+			testMatch: /.*\.bench\.(ts)/,
 		},
 		{
 			name: 'Screenshots',
-			testMatch: /.*tests-integration.*\.screenshot\.ts/,
+			testMatch: /.*\.screenshot\.ts/,
 			use: {
 				workspace: path.resolve(path.join(
 					__dirname, '../TestFiles/ScreenshotWorkspace/My Workspace'

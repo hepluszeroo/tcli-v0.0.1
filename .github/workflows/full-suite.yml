@@ -59,7 +59,7 @@ jobs:
             echo "Attempting to run Playwright..."
             echo "Attempting to run Playwright with DEBUG flags and explicit config..."
             DEBUG=pw:api,pw:test,codex,main,mock-codex INTEGRATION_TEST_USE_FILE_TRANSPORT=1 CODEX_DEBUG_TIMERS=1 DUMP_HANDLES=1 \
-            pnpm exec playwright test tests-integration --config=./playwright.config.ts --workers 1 --reporter=list
+            pnpm exec playwright test --config=./playwright.config.ts --workers 1 --reporter=list
 
             # If the above doesn't work, try a single test file:
             echo "\nAttempting to run a single test file as a fallback..."
@@ -81,6 +81,5 @@ jobs:
               xvfb-run --server-num=99 --server-args="-screen 0 1280x720x24" \
               DEBUG=pw:api,pw:test,codex,main,mock-codex pnpm exec playwright test \
                 --config=./Tangent-main/apps/tangent-electron/playwright.config.ts \
-                "Tangent-main/apps/tangent-electron/tests-integration" \
                 --workers 1 --reporter=list
           fi
