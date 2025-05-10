@@ -11,7 +11,7 @@ jobs:
     name: E2E Codex Integration Tests
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-22.04, macos-latest]
         include:
           - os: macos-latest
             env:
