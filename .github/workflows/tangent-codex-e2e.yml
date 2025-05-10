@@ -11,16 +11,14 @@ jobs:
     name: E2E Codex Integration Tests
     strategy:
       matrix:
-        os: [ubuntu-22.04, macos-latest]
-        include:
-          - os: macos-latest
-            env:
-              INTEGRATION_TEST_USE_FILE_TRANSPORT: 1
+        os: [ubuntu-22.04]
+        # Temporarily removed macOS for faster debugging
+        # Will restore once Ubuntu passes
     runs-on: ${{ matrix.os }}
     env:
       DEBUG: codex
       ELECTRON_DISABLE_SANDBOX: ${{ runner.os == 'Linux' && '1' || '' }}
-    timeout-minutes: 20
+    timeout-minutes: 10
 
     steps:
       - name: Checkout code
@@ -127,12 +125,14 @@ jobs:
             docker run --rm \
               --platform linux/amd64 \
               -e PLAYWRIGHT_IN_DOCKER=1 \
-              -e DEBUG=pw:api,pw:test,pw:config,pw:runner,codex \
+              -e DEBUG=pw:api,pw:test,pw:config,pw:runner,pw:browser*,pw:protocol*,codex \
               -e CODEX_DEBUG_TIMERS=1 \
               -e DUMP_HANDLES=1 \
               -e ELECTRON_DISABLE_SANDBOX=1 \
               tangent-codex-tests:amd64 \
-              /bin/bash -c "cd Tangent-main/apps/tangent-electron && \
+              /bin/bash -c "set -euo pipefail
+              set -x
+              cd Tangent-main/apps/tangent-electron && \
               echo 'DEBUG: Docker working directory: '$(pwd) && \
               echo 'DEBUG: Listing tests to verify discovery:' && \
               xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' \

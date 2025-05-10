@@ -9,7 +9,7 @@ jobs:
   playwright:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-22.04, macos-latest]
         include:
           - os: macos-latest
             env:
@@ -67,11 +67,14 @@ jobs:
             # Run Docker container on Linux
             docker run --rm \
               -e PLAYWRIGHT_IN_DOCKER=1 \
-              -e DEBUG=codex \
+              -e DEBUG=pw:api,pw:test,pw:config,pw:runner,pw:browser*,pw:protocol*,codex \
               -e CODEX_DEBUG_TIMERS=1 \
               -e DUMP_HANDLES=1 \
+              -e ELECTRON_DISABLE_SANDBOX=1 \
               tangent-codex-tests \
-              xvfb-run --server-num=99 --server-args="-screen 0 1280x720x24" \
+              /bin/bash -c "set -euo pipefail
+              set -x
+              xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' \
               pnpm exec playwright test \
                 --config=./Tangent-main/apps/tangent-electron/playwright.config.ts \
                 --project Tests --grep Codex --list && \
