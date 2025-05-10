@@ -1,0 +1,37 @@
+{
+  "name": "tangent-cli-intergration",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "enhanced-resolve": "^5.18.1",
+    "graceful-fs": "^4.2.11",
+    "tapable": "^2.2.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.52.0",
+    "webpack": "^5.88.0",
+    "webpack-cli": "^4.10.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "electron:ensure": "pnpm --filter tangent_electron exec node -e \"require(require.resolve('electron/install.js'))\"",
+    "test:codex-quick": "pnpm run electron:ensure && pnpm --filter tangent_electron run build:test-e2e && pnpm --filter tangent_electron exec playwright test tests-integration/codex_* --workers 1"
+  },
+  "pnpm": {
+    "overrides": {
+      "quill-delta": "4.2.2"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hepluszeroo/tcli-v0.0.1.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/hepluszeroo/tcli-v0.0.1/issues"
+  },
+  "homepage": "https://github.com/hepluszeroo/tcli-v0.0.1#readme",
+  "description": ""
+}

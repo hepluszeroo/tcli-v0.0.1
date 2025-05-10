@@ -1,0 +1,10 @@
+{
+  "name": "typewriter",
+  "version": "1.0.0",
+  "description": "Placeholder package for CI",
+  "main": "index.js",
+  "scripts": {
+    "build": "echo \"Placeholder build script\" && exit 0"
+  },
+  "private": true
+}

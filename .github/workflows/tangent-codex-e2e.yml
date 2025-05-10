@@ -1,0 +1,169 @@
+name: Tangent Codex E2E Tests
+
+on:
+  push:
+    branches: [main, feat/*, fix/*]
+  pull_request:
+    branches: [main]
+
+jobs:
+  e2e-tests:
+    name: E2E Codex Integration Tests
+    strategy:
+      matrix:
+        os: [ubuntu-22.04]
+        # Temporarily removed macOS for faster debugging
+        # Will restore once Ubuntu passes
+    runs-on: ${{ matrix.os }}
+    env:
+      DEBUG: codex
+      ELECTRON_DISABLE_SANDBOX: ${{ runner.os == 'Linux' && '1' || '' }}
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Debug Workspace Layout
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Listing files in current directory:"
+          ls -la
+          echo "Looking for pnpm-lock.yaml:"
+          find . -name "pnpm-lock.yaml" -print
+          echo "Looking for package.json:"
+          find . -name "package.json" -print
+          echo "Looking for pnpm-workspace.yaml:"
+          find . -name "pnpm-workspace.yaml" -print
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+          run_install: false # Disable automatic install
+
+      - name: Install root dependencies
+        run: pnpm install --frozen-lockfile
+        # No working-directory needed as we want to run in repo root
+
+      - name: Build Docker image (Linux only)
+        id: docker_build
+        if: runner.os == 'Linux'
+        run: |
+          docker build --platform linux/amd64 -f Dockerfile.playwright -t tangent-codex-tests:amd64 .
+
+      - name: Handle Docker build failure (Linux only)
+        if: runner.os == 'Linux' && failure() && steps.docker_build.outcome == 'failure'
+        run: |
+          echo "::error::Docker build failed. Check Dockerfile.playwright and build scripts."
+          exit 1
+
+      - name: Debug Build Environment (macOS only)
+        if: runner.os == 'macOS'
+        run: |
+          echo "Current working directory: $(pwd)"
+          echo "Checking for build-e2e.js file:"
+          ls -la Tangent-main/apps/tangent-electron/build/
+          echo "Checking package.json script:"
+          cat Tangent-main/apps/tangent-electron/package.json | grep build:test-e2e
+          echo "Verifying webpack availability:"
+          cd Tangent-main/apps/tangent-electron
+          node -e "try { const wp = require.resolve('webpack'); console.log('✅ webpack found at:', wp); } catch (err) { console.error('❌ webpack not found:', err.message); }"
+          cd -
+
+      - name: Build E2E bundle (macOS only)
+        if: runner.os == 'macOS'
+        run: pnpm --filter tangent_electron run build:test-e2e
+
+      - name: Run Codex integration tests
+        run: |
+          # Step 1: Switch to package directory and use simple config path instead
+          # Step 2: Add sanity check for Playwright CLI (using public exports)
+          echo "DEBUG: Verifying Playwright CLI is accessible:"
+          npx playwright --version || { echo "❌ Playwright CLI not accessible"; exit 1; }
+
+          # Change to the electron package directory first
+          cd Tangent-main/apps/tangent-electron
+          echo "DEBUG: Changed working directory to: $(pwd)"
+
+          echo "DEBUG: Verifying config and test files exist:"
+          ls -la playwright.config.ts || echo "❌ playwright.config.ts not found"
+          ls -la tests-integration/codex_*.test.ts || echo "❌ Test files not found"
+
+          if [ "$RUNNER_OS" == "macOS" ]; then
+            # Step 3: Fail fast if no tests discovered
+            echo "DEBUG: Listing tests to verify discovery (will fail if none found):"
+            DEBUG=pw:api,pw:test,pw:config,pw:runner INTEGRATION_TEST_USE_FILE_TRANSPORT=1 \
+            npx playwright test \
+              --config=./playwright.config.ts \
+              --project Tests --grep Codex --list || { echo "❌ No tests discovered"; exit 1; }
+
+            echo "DEBUG: Running Playwright tests with simple config path:"
+            # Run on macOS with file transport enabled and timeout
+            timeout 15m \
+            DEBUG=pw:api,pw:test,pw:config,pw:runner,codex,main,mock-codex INTEGRATION_TEST_USE_FILE_TRANSPORT=1 CODEX_DEBUG_TIMERS=1 DUMP_HANDLES=1 \
+            npx playwright test \
+              --config=./playwright.config.ts \
+              --project Tests --grep Codex --workers 1 --reporter=list --timeout=60000
+          else
+            # Run Docker container on Linux with Xvfb for display server
+            # Step 3 for Docker: Fail fast if no tests discovered, then run tests
+            docker run --rm \
+              --platform linux/amd64 \
+              -e PLAYWRIGHT_IN_DOCKER=1 \
+              -e DEBUG=pw:api,pw:test,pw:config,pw:runner,pw:browser*,pw:protocol*,codex \
+              -e CODEX_DEBUG_TIMERS=1 \
+              -e DUMP_HANDLES=1 \
+              -e ELECTRON_DISABLE_SANDBOX=1 \
+              tangent-codex-tests:amd64 \
+              /bin/bash -c "set -euo pipefail
+              set -x
+              cd Tangent-main/apps/tangent-electron && \
+              echo 'DEBUG: Docker working directory: '$(pwd) && \
+              echo 'DEBUG: Listing tests to verify discovery:' && \
+              xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' \
+              npx playwright test \
+                --config=./playwright.config.ts \
+                --project Tests --grep Codex --list || { echo '❌ No tests discovered'; exit 1; } && \
+              echo 'DEBUG: Running tests:' && \
+              timeout 15m \
+              xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' \
+              npx playwright test \
+                --config=./playwright.config.ts \
+                --project Tests --grep Codex --workers 1 --reporter=list --timeout=60000"
+          fi
+
+      - name: Upload test report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-${{ matrix.os }}
+          path: Tangent-main/apps/tangent-electron/playwright-report/
+          retention-days: 14
+
+      - name: Upload mock Codex debug logs (macOS only)
+        uses: actions/upload-artifact@v4
+        if: runner.os == 'macOS' && (failure() || success())
+        with:
+          name: mock-codex-debug-${{ matrix.os }}
+          path: |
+            /tmp/mock-codex-debug.log
+            /tmp/codex-*.log
+            /tmp/codex-fd.log
+            /tmp/codex-main-*.log
+          retention-days: 7
+          if-no-files-found: ignore

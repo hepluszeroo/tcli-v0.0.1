@@ -1,0 +1,135 @@
+# macOS / editors
+.DS_Store
+.vscode/
+.vite/
+.env
+.claude/
+
+# Build & test artefacts
+Tangent-main/apps/tangent-electron/build/
+# Include build-e2e.js for CI
+!Tangent-main/apps/tangent-electron/build/build-e2e.js
+!Tangent-main/apps/tangent-electron/build/index.js
+Tangent-main/apps/tangent-electron/test-results/
+codex-main/codex-cli/dist/
+test-results/
+coverage/
+*.log
+*.timestamp-*
+
+# Node / pnpm
+node_modules/
+.pnp.*
+.idea/
+
+# Electron packaged apps
+*.asar
+dist/
+
+# Development files
+.temp/
+.cache/
+**/out/
+**/bin/
+**/.next/
+.history/
+
+# Submodules - these are separate git repositories
+# But exclude the specific files we modified
+Tangent-main/*
+!Tangent-main/apps/
+Tangent-main/apps/*
+!Tangent-main/apps/tangent-electron/
+Tangent-main/apps/tangent-electron/*
+# Include playwright config for E2E tests
+!Tangent-main/apps/tangent-electron/playwright.config.ts
+# Include required tests for E2E verification
+!Tangent-main/apps/tangent-electron/tests-integration/
+Tangent-main/apps/tangent-electron/tests-integration/*
+!Tangent-main/apps/tangent-electron/tests-integration/*.ts
+!Tangent-main/apps/tangent-electron/tests-integration/**/*.ts
+
+# Include required source files needed for verification scripts
+!Tangent-main/apps/tangent-electron/src/
+Tangent-main/apps/tangent-electron/src/*
+!Tangent-main/apps/tangent-electron/src/common/
+!Tangent-main/apps/tangent-electron/src/common/**
+!Tangent-main/apps/tangent-electron/src/main/
+Tangent-main/apps/tangent-electron/src/main/*
+!Tangent-main/apps/tangent-electron/src/main/Workspace.ts
+!Tangent-main/apps/tangent-electron/src/main/settings.ts
+!Tangent-main/apps/tangent-electron/src/main/webpack.config.js
+!Tangent-main/apps/tangent-electron/src/main/codex_process_manager.ts
+!Tangent-main/apps/tangent-electron/src/main/File.ts
+!Tangent-main/apps/tangent-electron/src/main/Folder.ts
+!Tangent-main/apps/tangent-electron/src/main/Tag.ts
+!Tangent-main/apps/tangent-electron/src/main/WorkspaceTreeNode.ts
+!Tangent-main/apps/tangent-electron/src/main/DataFile.ts
+!Tangent-main/apps/tangent-electron/src/main/WindowHandle.ts
+!Tangent-main/apps/tangent-electron/src/main/files.ts
+!Tangent-main/apps/tangent-electron/src/main/grammarLoader.ts
+!Tangent-main/apps/tangent-electron/src/main/migrations/
+!Tangent-main/apps/tangent-electron/src/main/migrations/workspaceMigrator.ts
+!Tangent-main/apps/tangent-electron/src/main/ioQueue.ts
+!Tangent-main/apps/tangent-electron/src/main/utils/
+!Tangent-main/apps/tangent-electron/src/main/utils/codex_ndjson_parser.ts
+!Tangent-main/apps/tangent-electron/src/main/environment.ts
+!Tangent-main/apps/tangent-electron/src/app/
+Tangent-main/apps/tangent-electron/src/app/*
+!Tangent-main/apps/tangent-electron/src/app/webpack.config.js
+!Tangent-main/apps/tangent-electron/src/preload/
+Tangent-main/apps/tangent-electron/src/preload/*
+!Tangent-main/apps/tangent-electron/src/preload/webpack.config.js
+!Tangent-main/apps/tangent-electron/src/preload/index.ts
+!Tangent-main/apps/tangent-electron/src/testing/
+Tangent-main/apps/tangent-electron/src/testing/*
+!Tangent-main/apps/tangent-electron/src/testing/e2e_stub/
+Tangent-main/apps/tangent-electron/src/testing/e2e_stub/*
+!Tangent-main/apps/tangent-electron/src/testing/e2e_stub/webpack.config.js
+
+# Include tsconfig files needed for build
+!Tangent-main/apps/tangent-electron/tsconfig.json
+!Tangent-main/apps/tangent-electron/tsconfig.main.json
+!Tangent-main/apps/tangent-electron/svelte.config.js
+!Tangent-main/svelte.config.js
+!Tangent-main/apps/tangent-electron/webpack.aliases.js
+
+# Include stub files needed for Docker build
+!Tangent-main/apps/tangent-electron/scripts/
+Tangent-main/apps/tangent-electron/scripts/*
+!Tangent-main/apps/tangent-electron/scripts/stub_main.js
+!Tangent-main/apps/tangent-electron/scripts/stub_preload.js
+!Tangent-main/apps/tangent-electron/scripts/stub_renderer.html
+
+# Include shim files needed for webpack builds
+!Tangent-main/apps/tangent-electron/shims/
+!Tangent-main/apps/tangent-electron/shims/**
+
+# Include package.json file needed for builds
+!Tangent-main/apps/tangent-electron/package.json
+
+# Include placeholder package for typewriter dependency
+!Tangent-main/lib/
+!Tangent-main/lib/typewriter/
+!Tangent-main/lib/typewriter/package.json
+!Tangent-main/lib/typewriter/index.js
+!Tangent-main/lib/typewriter/README.md
+
+codex-main/
+
+# Our test and diagnostic scripts
+# Previously excluded but now included for CI
+# scripts/electron-playwright-stdout-repro.js
+# scripts/package-app-smoke-test.js
+# scripts/verify-dark-launch.js
+
+# Documentation and reports
+dev_log/
+
+# GitHub workflow files - Include specific ones
+.github/workflows/*
+!.github/workflows/full-suite.yml
+!.github/workflows/packaged-app-smoke.yml
+!.github/workflows/dark-launch-verify.yml
+!.github/workflows/tangent-codex-e2e.yml
+!.github/workflows/codex-e2e.yml

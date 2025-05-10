@@ -1,0 +1,85 @@
+name: full-suite-nightly
+
+on:
+  schedule:
+    - cron: '0 3 * * *'  # every night at 03:00 UTC
+  pull_request:
+    branches: [main]
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  full:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        include:
+          - os: macos-latest
+            env:
+              INTEGRATION_TEST_USE_FILE_TRANSPORT: 1
+    runs-on: ${{ matrix.os }}
+    env:
+      DEBUG: codex
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+          run_install: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build E2E bundle
+        run: pnpm --filter tangent_electron run build:test-e2e
+
+      - name: Build Docker image (no cache, Linux only)
+        if: runner.os == 'Linux'
+        run: |
+          docker build --no-cache \
+            --build-arg STUB_HASH=$(git rev-parse HEAD) \
+            -f Dockerfile.playwright -t tangent-codex-tests .
+
+      - name: Run full Playwright suite (26 tests)
+        run: |
+          if [ "$RUNNER_OS" == "macOS" ]; then
+            # Run directly on macOS with file transport enabled
+            cd Tangent-main/apps/tangent-electron
+            echo "DEBUG: Running Playwright from $(pwd)"
+            echo "DEBUG: Using directory argument 'tests-integration' for Playwright discovery"
+            ls -la tests-integration/
+            echo "Attempting to run Playwright..."
+            echo "Attempting to run Playwright with DEBUG flags and explicit config..."
+            DEBUG=pw:api,pw:test,codex,main,mock-codex INTEGRATION_TEST_USE_FILE_TRANSPORT=1 CODEX_DEBUG_TIMERS=1 DUMP_HANDLES=1 \
+            pnpm exec playwright test --config=./playwright.config.ts --workers 1 --reporter=list
+
+            # If the above doesn't work, try a single test file:
+            echo "\nAttempting to run a single test file as a fallback..."
+            DEBUG=pw:api,pw:test,codex,main,mock-codex INTEGRATION_TEST_USE_FILE_TRANSPORT=1 CODEX_DEBUG_TIMERS=1 DUMP_HANDLES=1 \
+            pnpm exec playwright test --config=./playwright.config.ts "./tests-integration/codex_happy_path.test.ts" --workers 1 --reporter=list
+
+            # Try with default config-based test discovery:
+            echo "\nAttempting to run with default config-based test discovery..."
+            DEBUG=pw:api,pw:test,codex,main,mock-codex INTEGRATION_TEST_USE_FILE_TRANSPORT=1 CODEX_DEBUG_TIMERS=1 DUMP_HANDLES=1 \
+            pnpm exec playwright test --config=./playwright.config.ts --workers 1 --reporter=list
+          else
+            # Run Docker container on Linux
+            docker run --rm \
+              -e PLAYWRIGHT_IN_DOCKER=1 \
+              -e DEBUG=codex \
+              -e CODEX_DEBUG_TIMERS=1 \
+              -e DUMP_HANDLES=1 \
+              tangent-codex-tests \
+              xvfb-run --server-num=99 --server-args="-screen 0 1280x720x24" \
+              DEBUG=pw:api,pw:test,codex,main,mock-codex pnpm exec playwright test \
+                --config=./Tangent-main/apps/tangent-electron/playwright.config.ts \
+                --workers 1 --reporter=list
+          fi
