@@ -139,9 +139,12 @@ ARG STUB_HASH
            > /repo/Tangent-main/apps/tangent-electron/__build/bundle/codex_process_manager.js
 
     ################################################################################
-    # 6 · Smoke-test Playwright CLI (via pnpm dlx ensures availability)
+    # 6 · Install Playwright browsers and dependencies
     ################################################################################
-    RUN pnpm dlx playwright@1.52.0 --version
+    RUN echo "Installing Playwright browsers and dependencies..." && \
+        npx playwright install --with-deps chromium electron && \
+        echo "Smoke-testing Playwright CLI..." && \
+        pnpm dlx playwright@1.52.0 --version
 
     ################################################################################
     # 7 · Tiny debug helper (using multiple echo statements to avoid heredoc issues)

@@ -63,19 +63,28 @@ jobs:
             pnpm exec playwright test --config=./playwright.config.ts --project Tests --grep Codex --workers 1 --reporter=list --timeout=60000
           else
             # Run Docker container on Linux with Xvfb for display server
+            set -euxo pipefail
+            echo "::group::pre-flight container info"
+            docker version
+            docker images --format '{{.Repository}} {{.ID}}'
+            echo "::endgroup::"
+
+            # ⬇️ all commands echoed because of 'set -x'
             docker run --rm \
               -e PLAYWRIGHT_IN_DOCKER=1 \
-              -e DEBUG=pw:api,pw:test,pw:config,pw:runner,pw:browser*,pw:protocol*,codex \
+              -e DEBUG=codex \
               -e CODEX_DEBUG_TIMERS=1 \
               -e DUMP_HANDLES=1 \
               -e ELECTRON_DISABLE_SANDBOX=1 \
               tangent-codex-tests \
-              /bin/bash -c "set -euo pipefail
-              set -x
-              xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' \
-              pnpm exec playwright test \
-                --config=./Tangent-main/apps/tangent-electron/playwright.config.ts --project Tests --grep Codex --list && \
-              DEBUG=pw:api,pw:test,codex,main,mock-codex pnpm exec playwright test \
-                --config=./Tangent-main/apps/tangent-electron/playwright.config.ts \
-                --project Tests --grep Codex --workers 1 --reporter=list --timeout=60000
+              bash -c "set -euxo pipefail; \
+                       cd /repo/Tangent-main/apps/tangent-electron; \
+                       echo 'Inside container, node=' \$(node -v); \
+                       xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' \
+                         pnpm exec playwright test --config=playwright.config.ts \
+                         --project Tests --grep Codex --list; \
+                       DEBUG=pw:api,pw:test,codex,main,mock-codex \
+                         xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' \
+                         pnpm exec playwright test --config=playwright.config.ts \
+                         --project Tests --grep Codex --workers 1 --reporter=list --timeout=60000"
           fi
