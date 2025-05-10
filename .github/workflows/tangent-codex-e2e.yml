@@ -92,35 +92,32 @@ jobs:
 
       - name: Run Codex integration tests
         run: |
-          # Step 1: Run from repo root with --workspace-root flag to prevent CWD changes
+          # Step 1: Switch to package directory and use simple config path instead
           # Step 2: Add sanity check for Playwright CLI (using public exports)
           echo "DEBUG: Verifying Playwright CLI is accessible:"
-          pnpm exec --workspace-root playwright --version || { echo "❌ Playwright CLI not accessible"; exit 1; }
+          npx playwright --version || { echo "❌ Playwright CLI not accessible"; exit 1; }
 
-          # Step 3: Add debug echo to show the CWD Playwright ends up in
-          echo "DEBUG: Current working directory: $(pwd)"
-          node -e "console.log('→ final cwd:', process.cwd())"
-
-          # Export config path as a variable for consistency
-          export CONFIG="./Tangent-main/apps/tangent-electron/playwright.config.ts"
+          # Change to the electron package directory first
+          cd Tangent-main/apps/tangent-electron
+          echo "DEBUG: Changed working directory to: $(pwd)"
 
           echo "DEBUG: Verifying config and test files exist:"
-          ls -la $CONFIG || echo "❌ playwright.config.ts not found"
-          ls -la Tangent-main/apps/tangent-electron/tests-integration/codex_*.test.ts || echo "❌ Test files not found"
+          ls -la playwright.config.ts || echo "❌ playwright.config.ts not found"
+          ls -la tests-integration/codex_*.test.ts || echo "❌ Test files not found"
 
           if [ "$RUNNER_OS" == "macOS" ]; then
-            # Step 4: Fail fast if no tests discovered
+            # Step 3: Fail fast if no tests discovered
             echo "DEBUG: Listing tests to verify discovery (will fail if none found):"
             DEBUG=pw:api,pw:test,pw:config,pw:runner INTEGRATION_TEST_USE_FILE_TRANSPORT=1 \
-            pnpm exec --workspace-root playwright test \
-              --config=$CONFIG \
+            npx playwright test \
+              --config=./playwright.config.ts \
               --project Tests --grep Codex --list || { echo "❌ No tests discovered"; exit 1; }
 
-            echo "DEBUG: Running Playwright tests with absolute paths:"
+            echo "DEBUG: Running Playwright tests with simple config path:"
             # Run on macOS with file transport enabled
             DEBUG=pw:api,pw:test,pw:config,pw:runner,codex,main,mock-codex INTEGRATION_TEST_USE_FILE_TRANSPORT=1 CODEX_DEBUG_TIMERS=1 DUMP_HANDLES=1 \
-            pnpm exec --workspace-root playwright test \
-              --config=$CONFIG \
+            npx playwright test \
+              --config=./playwright.config.ts \
               --project Tests --grep Codex --workers 1 --reporter=list --timeout=60000
           else
             # Run Docker container on Linux with Xvfb for display server
@@ -132,16 +129,17 @@ jobs:
               -e CODEX_DEBUG_TIMERS=1 \
               -e DUMP_HANDLES=1 \
               tangent-codex-tests:amd64 \
-              /bin/bash -c "echo 'DEBUG: Listing tests to verify discovery:' && \
-              node -e \"console.log('→ final Docker cwd:', process.cwd())\" && \
+              /bin/bash -c "cd Tangent-main/apps/tangent-electron && \
+              echo 'DEBUG: Docker working directory: '$(pwd) && \
+              echo 'DEBUG: Listing tests to verify discovery:' && \
               xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' \
-              pnpm exec --workspace-root playwright test \
-                --config=./Tangent-main/apps/tangent-electron/playwright.config.ts \
+              npx playwright test \
+                --config=./playwright.config.ts \
                 --project Tests --grep Codex --list || { echo '❌ No tests discovered'; exit 1; } && \
               echo 'DEBUG: Running tests:' && \
               xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' \
-              pnpm exec --workspace-root playwright test \
-                --config=./Tangent-main/apps/tangent-electron/playwright.config.ts \
+              npx playwright test \
+                --config=./playwright.config.ts \
                 --project Tests --grep Codex --workers 1 --reporter=list --timeout=60000"
           fi
 
