@@ -113,12 +113,17 @@ ARG STUB_HASH
 
     ################################################################################
     # 4 · Comprehensive Electron self-test using external script files
-    ################################################################################
-    # Copy the test scripts into the container
-    COPY scripts/electron-tests /repo/scripts/electron-tests
+    # First switch to root user to handle file operations that require elevated privileges
+    USER root
 
-    # Make sure the scripts are executable
-    RUN chmod +x /repo/scripts/electron-tests/*.js
+    # Copy the test scripts into the container - scripts should already be executable locally
+    COPY --chmod=755 scripts/electron-tests /repo/scripts/electron-tests
+
+    # Change ownership of the scripts to pwuser (matching the rest of the repo)
+    RUN chown -R pwuser:pwuser /repo/scripts/electron-tests
+
+    # Switch back to pwuser for running the tests
+    USER pwuser
 
     # Start of Electron self-test
     RUN echo "\n\n❔ Running comprehensive Electron self-test (using external scripts)...\n\n"
