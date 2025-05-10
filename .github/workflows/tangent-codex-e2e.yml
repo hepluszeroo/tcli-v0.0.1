@@ -19,6 +19,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       DEBUG: codex
+      ELECTRON_DISABLE_SANDBOX: ${{ runner.os == 'Linux' && '1' || '' }}
     timeout-minutes: 20
 
     steps:
@@ -114,7 +115,8 @@ jobs:
               --project Tests --grep Codex --list || { echo "❌ No tests discovered"; exit 1; }
 
             echo "DEBUG: Running Playwright tests with simple config path:"
-            # Run on macOS with file transport enabled
+            # Run on macOS with file transport enabled and timeout
+            timeout 15m \
             DEBUG=pw:api,pw:test,pw:config,pw:runner,codex,main,mock-codex INTEGRATION_TEST_USE_FILE_TRANSPORT=1 CODEX_DEBUG_TIMERS=1 DUMP_HANDLES=1 \
             npx playwright test \
               --config=./playwright.config.ts \
@@ -128,6 +130,7 @@ jobs:
               -e DEBUG=pw:api,pw:test,pw:config,pw:runner,codex \
               -e CODEX_DEBUG_TIMERS=1 \
               -e DUMP_HANDLES=1 \
+              -e ELECTRON_DISABLE_SANDBOX=1 \
               tangent-codex-tests:amd64 \
               /bin/bash -c "cd Tangent-main/apps/tangent-electron && \
               echo 'DEBUG: Docker working directory: '$(pwd) && \
@@ -137,6 +140,7 @@ jobs:
                 --config=./playwright.config.ts \
                 --project Tests --grep Codex --list || { echo '❌ No tests discovered'; exit 1; } && \
               echo 'DEBUG: Running tests:' && \
+              timeout 15m \
               xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' \
               npx playwright test \
                 --config=./playwright.config.ts \

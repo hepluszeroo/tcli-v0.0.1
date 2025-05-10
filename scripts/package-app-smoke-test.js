@@ -35,6 +35,11 @@ function log(message) {
  * Launch the app with specified settings and environment
  */
 async function launchApp(enableCodexIntegration, useFileTransport = false) {
+  // Initialize env at the top of the function to avoid TDZ issues
+  const env = {
+    ...process.env,
+    // These will be augmented later in the function
+  };
   // Create a test workspace
   const TEST_WORKSPACE = path.join(os.tmpdir(), `tangent-smoke-test-workspace-${Date.now()}`);
   fs.mkdirSync(TEST_WORKSPACE, { recursive: true });
@@ -208,38 +213,37 @@ async function launchApp(enableCodexIntegration, useFileTransport = false) {
   }
 
   // Prepare environment variables
-  const env = {
-    ...process.env,
-    // Tangent-specific variables
-    TANGENT_TEST_MODE: '1',
+  // Tangent-specific variables
+  env.TANGENT_TEST_MODE = '1';
 
-    // Save the settings path for reference in the app
-    SETTINGS_FILE_PATH: SETTINGS_FILE,
+  // Save the settings path for reference in the app
+  env.SETTINGS_FILE_PATH = SETTINGS_FILE;
 
-    // Codex integration variables
-    MOCK_CODEX_PATH: path.join(__dirname, 'mock_codex_headless.js'),
-    MOCK_CODEX_DEBUG: '1',  // Enable verbose logging in mock_codex_headless.js
-    MOCK_CODEX_ARGS: '--delay 500', // Add slight delay to ensure proper IPC
-    INTEGRATION_TEST_USE_FILE_TRANSPORT: useFileTransport ? '1' : '0',
-    ENABLE_CODEX_INTEGRATION: enableCodexIntegration ? '1' : '0',
-    CODEX_BINARY_PATH: path.join(__dirname, 'mock_codex_headless.js'), // Backup path reference
+  // Codex integration variables
+  env.MOCK_CODEX_PATH = path.join(__dirname, 'mock_codex_headless.js');
+  env.MOCK_CODEX_DEBUG = '1';  // Enable verbose logging in mock_codex_headless.js
+  env.MOCK_CODEX_ARGS = '--delay 500'; // Add slight delay to ensure proper IPC
+  env.INTEGRATION_TEST_USE_FILE_TRANSPORT = useFileTransport ? '1' : '0';
+  env.ENABLE_CODEX_INTEGRATION = enableCodexIntegration ? '1' : '0';
+  env.CODEX_BINARY_PATH = path.join(__dirname, 'mock_codex_headless.js'); // Backup path reference
 
-    // Debug flags
-    DEBUG: 'codex,codex:*,tangent:*',  // Enable all Codex and Tangent debug logs
+  // Debug flags
+  env.DEBUG = 'codex,codex:*,tangent:*';  // Enable all Codex and Tangent debug logs
 
-    // Enhanced diagnostic variables
-    ELECTRON_ENABLE_LOGGING: '1',
-    ELECTRON_DEBUG_LOG: '1',
-    ELECTRON_DISABLE_SECURITY_WARNINGS: '1', // Reduce noise in logs
-    E2E_DEVTOOLS: '1',  // Enable DevTools for additional debugging
-    PACKAGED_APP_SMOKE_TEST: '1',  // Signal that we're running the smoke test
+  // Enhanced diagnostic variables
+  env.ELECTRON_ENABLE_LOGGING = '1';
+  env.ELECTRON_DEBUG_LOG = '1';
+  env.ELECTRON_DISABLE_SECURITY_WARNINGS = '1'; // Reduce noise in logs
+  env.E2E_DEVTOOLS = '1';  // Enable DevTools for additional debugging
+  env.PACKAGED_APP_SMOKE_TEST = '1';  // Signal that we're running the smoke test
 
-    // Disable sandbox on Linux CI to prevent SUID sandbox helper binary errors
-    ...(process.platform === 'linux' && process.env.CI ? { ELECTRON_DISABLE_SANDBOX: '1' } : {})
+  // Disable sandbox on Linux CI to prevent SUID sandbox helper binary errors
+  if (process.platform === 'linux' && process.env.CI) {
+    env.ELECTRON_DISABLE_SANDBOX = '1';
+  }
 
-    // Set Node options for additional debugging if needed
-    NODE_OPTIONS: '--trace-warnings --trace-exit'
-  };
+  // Set Node options for additional debugging if needed
+  env.NODE_OPTIONS = '--trace-warnings --trace-exit';
 
   // Always set MOCK_CODEX_OUT for consistent behavior, even when file transport is disabled
   // This ensures the mock Codex can always write to a file, which helps with diagnostics
