@@ -61,11 +61,15 @@ ARG STUB_HASH
         echo "✅ Core dependencies installed successfully"
 
     # Step 2: Install Electron using multiple approaches for redundancy
+    # Switch to root temporarily for any commands that might need privileges
+    USER root
+    RUN apt-get update && apt-get install -y sudo
+
+    # Switch back to pwuser for package installation
+    USER pwuser
     RUN echo "🚀 Installing Electron..." && \
         echo "Method 1: Using pnpm add..." && \
         pnpm add -Dw --workspace-root electron@35.2.1 --ignore-scripts=false || echo "pnpm add failed, trying alternate methods" && \
-        echo "Method 2: Using Playwright's installer..." && \
-        npx playwright install --with-deps chromium || echo "Playwright browser install failed, trying final method" && \
         echo "Method 3: Installing electron binary manually..." && \
         node -e "require('electron/install.js')" || echo "Manual electron install failed" && \
         echo "Verifying electron installation..." && \
@@ -141,10 +145,19 @@ ARG STUB_HASH
     ################################################################################
     # 6 · Install Playwright browsers and dependencies
     ################################################################################
+    # Switch to root user for browser installation which requires sudo privileges
+    USER root
+
+    # Ensure sudo is available for Playwright's dependency installation
+    RUN apt-get update && apt-get install -y sudo
+
     RUN echo "Installing Playwright browsers (Chromium, Firefox, WebKit) and dependencies..." && \
         npx playwright install --with-deps chromium firefox webkit && \
         echo "Smoke-testing Playwright CLI..." && \
         npx playwright --version
+
+    # Switch back to pwuser for the rest of the operations
+    USER pwuser
 
     ################################################################################
     # 7 · Tiny debug helper (using multiple echo statements to avoid heredoc issues)
