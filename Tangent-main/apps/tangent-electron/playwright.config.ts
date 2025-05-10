@@ -19,6 +19,23 @@ export default defineConfig<TangentOptions>({
 		{
 			name: 'Tests',
 			testMatch: /.*\.test\.(ts)/,
+			// Part II: Configure Playwright's Electron launcher with optimal settings
+			use: {
+				// Use Playwright's built-in Electron launcher
+				// This ensures a consistent environment across all platforms
+				launchOptions: {
+					args: [
+						'--no-sandbox',
+						'--disable-gpu',
+						'--disable-dev-shm-usage'
+					],
+					env: {
+						// Ensure Electron logs are captured
+						ELECTRON_ENABLE_LOGGING: '1',
+						ELECTRON_DISABLE_SANDBOX: '1'
+					}
+				}
+			}
 		},
 		{
 			name: 'Benchmarks',

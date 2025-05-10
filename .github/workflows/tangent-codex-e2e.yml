@@ -93,9 +93,9 @@ jobs:
       - name: Run Codex integration tests
         run: |
           # Step 1: Always run from repo root with absolute paths
-          # Step 2: Add sanity check for Playwright CLI
+          # Step 2: Add sanity check for Playwright CLI (using public exports)
           echo "DEBUG: Verifying Playwright CLI is accessible:"
-          node -e "require('@playwright/test/lib/cli/').printVersion();" || { echo "❌ Playwright CLI not accessible"; exit 1; }
+          pnpm exec playwright --version || { echo "❌ Playwright CLI not accessible"; exit 1; }
 
           echo "DEBUG: Current working directory: $(pwd)"
 

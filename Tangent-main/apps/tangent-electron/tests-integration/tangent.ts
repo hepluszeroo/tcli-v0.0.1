@@ -92,50 +92,40 @@ const buildDir = path.resolve(__dirname, '../__build')
 //   • Any other host (Linux developers, CI) → npm binary.
 // ---------------------------------------------------------------------------
 
+// Part II: Use Playwright's built-in Electron executable instead of a vendored binary
+// This avoids macOS Gatekeeper issues and makes the test environment consistent
+// between macOS and Linux
 function getElectronExec(): string {
-  function npmElectronBinary(): string | null {
+  try {
+    // Import Playwright's electron module to access its executable path
+    // This is the most reliable way to get a compatible Electron binary
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const playwrightElectron = require('@playwright/test')._electron
+    const electronPath = playwrightElectron.executablePath()
+
+    console.log('[tangent.ts] Using Playwright built-in Electron:', electronPath)
+    return electronPath
+  } catch (error) {
+    console.error('[tangent.ts] Failed to get Playwright Electron path:', error)
+
+    // Fallback to npm-installed binary if Playwright's isn't available
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       return require('electron') as unknown as string
-    } catch {
-      return null
+    } catch (fallbackError) {
+      console.error('[tangent.ts] Fallback to npm electron failed:', fallbackError)
+      throw new Error('Cannot resolve Electron binary via Playwright or npm')
     }
   }
-
-  // Running inside our dedicated Docker image
-  if (process.env.PLAYWRIGHT_IN_DOCKER) {
-    const bin = npmElectronBinary()
-    if (bin) return bin
-  }
-
-  // macOS developer machines – attempt vendored bundle first
-  if (process.platform === 'darwin') {
-    const bundle = path.resolve(
-      __dirname,
-      '../../../../third_party/electron/darwin/Electron.app'
-    )
-    if (fs.existsSync(bundle)) {
-      return bundle // pass the .app root; Playwright will pick inner binary
-    }
-  }
-
-  // Default / fallback to npm-installed binary
-  const npmBin = npmElectronBinary()
-  if (npmBin) return npmBin
-
-  throw new Error('Cannot resolve Electron binary via npm or vendored bundle')
 }
 
 const execPath = getElectronExec()
 
-// Fail early with a friendly hint when the Electron binary is missing on a
-// developer machine (common right after a fresh clone when the post-install
-// download step did not run).
+// Fail early with a friendly hint when the Electron binary is missing
 if (!fs.existsSync(execPath)) {
   throw new Error(
     `Electron executable not found at ${execPath}. ` +
-      'Run "pnpm run electron:ensure" to download it or simply rerun the ' +
-      'quick-suite which triggers the same guard automatically.'
+    'Make sure Playwright is properly installed with browsers.'
   )
 }
 
