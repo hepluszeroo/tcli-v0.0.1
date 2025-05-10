@@ -80,5 +80,5 @@ jobs:
                 --project Tests --grep Codex --list && \
               DEBUG=pw:api,pw:test,codex,main,mock-codex pnpm exec playwright test \
                 --config=./Tangent-main/apps/tangent-electron/playwright.config.ts \
-                --project Tests --grep Codex --workers 1 --reporter=list --timeout=60000
+                --project Tests --grep Codex --workers 1 --reporter=list --timeout=60000"
           fi
