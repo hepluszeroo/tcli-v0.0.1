@@ -65,7 +65,7 @@ ARG STUB_HASH
         echo "Method 1: Using pnpm add..." && \
         pnpm add -Dw --workspace-root electron@35.2.1 --ignore-scripts=false || echo "pnpm add failed, trying alternate methods" && \
         echo "Method 2: Using Playwright's installer..." && \
-        npx playwright install --with-deps chromium electron || echo "Playwright electron install failed, trying final method" && \
+        npx playwright install --with-deps chromium || echo "Playwright browser install failed, trying final method" && \
         echo "Method 3: Installing electron binary manually..." && \
         node -e "require('electron/install.js')" || echo "Manual electron install failed" && \
         echo "Verifying electron installation..." && \
@@ -141,10 +141,10 @@ ARG STUB_HASH
     ################################################################################
     # 6 · Install Playwright browsers and dependencies
     ################################################################################
-    RUN echo "Installing Playwright browsers and dependencies..." && \
-        npx playwright install --with-deps chromium electron && \
+    RUN echo "Installing Playwright browsers (Chromium, Firefox, WebKit) and dependencies..." && \
+        npx playwright install --with-deps chromium firefox webkit && \
         echo "Smoke-testing Playwright CLI..." && \
-        pnpm dlx playwright@1.52.0 --version
+        npx playwright --version
 
     ################################################################################
     # 7 · Tiny debug helper (using multiple echo statements to avoid heredoc issues)
