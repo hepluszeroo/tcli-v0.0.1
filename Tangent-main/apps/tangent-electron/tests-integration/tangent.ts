@@ -104,6 +104,29 @@ function getElectronExec(): string {
     const electronPath = playwrightElectron.executablePath()
 
     console.log('[tangent.ts] Using Playwright built-in Electron:', electronPath)
+
+    // Validate the path exists
+    if (!fs.existsSync(electronPath)) {
+      console.error('[tangent.ts] Playwright Electron path does not exist:', electronPath)
+      throw new Error(`Playwright Electron path does not exist: ${electronPath}`)
+    }
+
+    // Check if the file is executable
+    try {
+      const stats = fs.statSync(electronPath)
+      console.log('[tangent.ts] Electron binary stats:', {
+        size: stats.size,
+        mode: stats.mode.toString(8),
+        isExecutable: !!(stats.mode & 0o111)
+      })
+
+      if (!(stats.mode & 0o111)) {
+        console.warn('[tangent.ts] WARNING: Electron binary is not executable!')
+      }
+    } catch (statsError) {
+      console.error('[tangent.ts] Error checking Electron stats:', statsError)
+    }
+
     return electronPath
   } catch (error) {
     console.error('[tangent.ts] Failed to get Playwright Electron path:', error)
@@ -111,10 +134,44 @@ function getElectronExec(): string {
     // Fallback to npm-installed binary if Playwright's isn't available
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      return require('electron') as unknown as string
+      const electronPath = require('electron') as unknown as string
+      console.log('[tangent.ts] Using npm-installed Electron:', electronPath)
+
+      // Validate path exists
+      if (!fs.existsSync(electronPath)) {
+        console.error('[tangent.ts] npm Electron path does not exist:', electronPath)
+        throw new Error(`npm Electron path does not exist: ${electronPath}`)
+      }
+
+      return electronPath
     } catch (fallbackError) {
       console.error('[tangent.ts] Fallback to npm electron failed:', fallbackError)
-      throw new Error('Cannot resolve Electron binary via Playwright or npm')
+
+      // Try a final fallback for Docker environment
+      if (process.env.PLAYWRIGHT_IN_DOCKER === '1') {
+        try {
+          // In Docker, search for Electron executable in common locations
+          const possiblePaths = [
+            '/repo/node_modules/.bin/electron',
+            '/repo/node_modules/electron/dist/electron',
+            '/ms-playwright/node_modules/.bin/electron'
+          ]
+
+          console.log('[tangent.ts] Attempting Docker fallbacks for Electron binary...')
+          for (const path of possiblePaths) {
+            if (fs.existsSync(path)) {
+              console.log('[tangent.ts] Found Electron at:', path)
+              return path
+            } else {
+              console.log('[tangent.ts] Electron not found at:', path)
+            }
+          }
+        } catch (dockerError) {
+          console.error('[tangent.ts] Docker fallback failed:', dockerError)
+        }
+      }
+
+      throw new Error('Cannot resolve Electron binary via Playwright, npm, or Docker fallbacks')
     }
   }
 }

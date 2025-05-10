@@ -19,9 +19,13 @@ export async function launchElectron(opts: {
 
   // Define common flags that are always needed
   const commonFlags = [
-    '--no-sandbox', 
-    '--disable-gpu', 
-    '--remote-debugging-port=0'
+    '--no-sandbox',
+    '--disable-gpu',
+    '--remote-debugging-port=0',
+    '--disable-setuid-sandbox', // Additional sandbox flag for CI/Docker
+    '--disable-dev-shm-usage', // Prevent issues with /dev/shm size in Docker
+    '--disable-software-rasterizer', // Avoid GPU issues
+    '--disable-accelerated-2d-canvas' // Avoid GPU issues
   ];
   
   // Special environment variables for Electron
@@ -154,7 +158,11 @@ export async function launchElectron(opts: {
     Object.assign(electronEnv, {
       ELECTRON_NO_ATTACH_CONSOLE: '1',
       ELECTRON_ENABLE_STACK_DUMPING: '1',
-      DEBUG: '1' // Enable debug logging
+      ELECTRON_ENABLE_LOGGING: '1',
+      ELECTRON_DISABLE_SANDBOX: '1',
+      ELECTRON_RUNNING_IN_DOCKER: '1', // Additional flag to indicate Docker environment
+      NODE_ENV: 'test',
+      DEBUG: 'electron,electron:*,codex,main,tangent' // Enhanced debug logging
     })
   }
   
@@ -200,6 +208,25 @@ export async function launchElectron(opts: {
   
   console.log('[electronHarness] Launching Electron with args:', finalArgs)
   console.log('[electronHarness] CWD:', actualBuildDir)
+
+  // Add detailed diagnostic logging for the Electron binary
+  console.log(`[electronHarness] Attempting to launch Electron. Effective executablePath: "${opts.electronBinary}"`)
+  console.log(`[electronHarness] Does this path exist? ${require('fs').existsSync(opts.electronBinary)}`)
+
+  if (require('fs').existsSync(opts.electronBinary)) {
+    try {
+      const stats = require('fs').statSync(opts.electronBinary);
+      console.log('[electronHarness] Electron binary stats:', {
+        size: stats.size,
+        mode: stats.mode.toString(8),
+        uid: stats.uid,
+        gid: stats.gid,
+        isExecutable: !!(stats.mode & 0o111)
+      });
+    } catch (err) {
+      console.error('[electronHarness] Error getting Electron binary stats:', err);
+    }
+  }
 
   try {
     const app = await _electron.launch({

@@ -69,15 +69,20 @@ ARG STUB_HASH
     USER pwuser
     RUN echo "🚀 Installing Electron..." && \
         echo "Method 1: Using pnpm add..." && \
-        pnpm add -Dw --workspace-root electron@35.2.1 --ignore-scripts=false || echo "pnpm add failed, trying alternate methods" && \
-        echo "Method 3: Installing electron binary manually..." && \
-        node -e "require('electron/install.js')" || echo "Manual electron install failed" && \
+        pnpm add -Dw --workspace-root electron@35.2.1 --ignore-scripts=false && \
+        echo "✅ pnpm add succeeded" || \
+        (echo "⚠️ pnpm add failed, trying alternate method..." && \
+        node -e "try { require('electron/install.js'); console.log('✅ Manual electron install succeeded'); } catch(e) { console.error('❌ Manual install failed:', e); process.exit(1); }") && \
         echo "Verifying electron installation..." && \
         if [ -d "/repo/node_modules/electron" ]; then \
           ls -la /repo/node_modules/electron && \
-          echo "✅ Electron directory exists in node_modules" ; \
+          ls -la /repo/node_modules/.bin/electron || true && \
+          echo "✅ Electron directory exists in node_modules" && \
+          chmod +x /repo/node_modules/electron/dist/electron || true && \
+          echo "Made electron binary executable"; \
         else \
-          echo "⚠️ Electron not found in node_modules, but continuing anyway"; \
+          echo "❌ ERROR: Electron not found in node_modules" && \
+          exit 1; \
         fi
 
     ###########################################################################
