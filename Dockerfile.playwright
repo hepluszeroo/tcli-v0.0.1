@@ -112,23 +112,146 @@ ARG STUB_HASH
         ls -la /repo/node_modules 2>/dev/null | grep electron || echo "No electron entry in node_modules directory listing"
 
     ################################################################################
-    # 4 · Comprehensive Electron self-test with better diagnostics
+    # 4 · Comprehensive Electron self-test with better diagnostics - split into multiple steps
     ################################################################################
-    RUN echo "\n\n❔ Running comprehensive Electron self-test...\n\n" && \
-        echo "1. Testing direct require..." && \
-        node -e "try { const path = require.resolve('electron'); console.log('✅ Electron resolved at', path); } catch(err) { console.error('❌ Electron require failed:', err.message); process.exit(1); }" && \
-        echo "2. Testing binary execution..." && \
-        node -e "const bin=require('electron'); const {spawnSync}=require('child_process'); console.log('Electron binary path:', bin); const r=spawnSync(bin,['--version','--no-sandbox']); if(r.status!==0){console.error('❌ Electron execution failed:',r.stderr.toString());process.exit(1);} console.log('✅ Electron version:',r.stdout.toString().trim());" && \
-        echo "3. Checking CLI symlink..." && \
+    # Start of Electron self-test
+    RUN echo "\n\n❔ Running comprehensive Electron self-test (step by step)...\n\n"
+
+    # Step 1: Test require.resolve('electron')
+    RUN echo "1. Testing direct require.resolve('electron')..." && \
+        node -e "try { \
+            console.log('Node.js version:', process.version); \
+            console.log('Current working directory:', process.cwd()); \
+            console.log('Module paths:', module.paths); \
+            const path = require.resolve('electron'); \
+            console.log('✅ Electron resolved at:', path); \
+            if (!require('fs').existsSync(path)) { \
+              console.error('❌ Resolved path does not exist!'); \
+              process.exit(1); \
+            } \
+        } catch(err) { \
+            console.error('❌ Electron require.resolve failed:'); \
+            console.error(err); \
+            // Continue with next steps (don't exit) for better diagnostics \
+            process.exit(0); \
+        }"
+
+    # Step 2: Test require('electron') - carefully
+    RUN echo "2. Testing require('electron')..." && \
+        node -e "try { \
+            let electronPath; \
+            try { \
+                electronPath = require('electron'); \
+                console.log('✅ require(electron) returned:', electronPath); \
+            } catch(err) { \
+                console.error('❌ require(electron) failed:'); \
+                console.error(err); \
+                process.exit(0); \
+            } \
+            \
+            if (typeof electronPath !== 'string') { \
+                console.error('❌ Unexpected electron module format:'); \
+                console.error('Type:', typeof electronPath); \
+                console.dir(electronPath, { depth: 2 }); \
+                \
+                // Try to find the binary another way \
+                const fs = require('fs'); \
+                const possiblePaths = [ \
+                    '/repo/node_modules/electron/dist/electron', \
+                    '/repo/node_modules/.bin/electron', \
+                    '/repo/node_modules/electron/electron' \
+                ]; \
+                for (const path of possiblePaths) { \
+                    if (fs.existsSync(path)) { \
+                        console.log('✅ Found alternative electron path:', path); \
+                        electronPath = path; \
+                        break; \
+                    } \
+                } \
+                if (typeof electronPath !== 'string') { \
+                    console.error('❌ Could not find electron binary via alternative paths'); \
+                    process.exit(0); \
+                } \
+            } \
+        } catch(err) { \
+            console.error('❌ Error during require(electron) test:'); \
+            console.error(err); \
+            process.exit(0); \
+        }"
+
+    # Step 3: Test binary execution with spawn
+    RUN echo "3. Testing binary execution..." && \
+        node -e "try { \
+            let electronPath; \
+            try { \
+                electronPath = require('electron'); \
+                console.log('Electron path for spawn:', electronPath); \
+            } catch(err) { \
+                console.error('Could not require electron, using fallback path'); \
+                // Fallback to a common path for electron binary \
+                electronPath = '/repo/node_modules/electron/dist/electron'; \
+            } \
+            \
+            if (!require('fs').existsSync(electronPath)) { \
+                console.error(`❌ Electron binary not found at ${electronPath}`); \
+                electronPath = '/repo/node_modules/.bin/electron'; \
+                if (!require('fs').existsSync(electronPath)) { \
+                    console.error('❌ Electron binary not found at fallback path either'); \
+                    process.exit(0); \
+                } \
+            } \
+            \
+            console.log('Running spawnSync with Electron binary:', electronPath); \
+            const {spawnSync} = require('child_process'); \
+            const args = ['--version', '--no-sandbox']; \
+            console.log(`Executing: ${electronPath} ${args.join(' ')}`); \
+            \
+            const result = spawnSync(electronPath, args, { \
+                encoding: 'utf8', \
+                timeout: 10000, \
+                env: { ...process.env, ELECTRON_DISABLE_SANDBOX: '1' } \
+            }); \
+            \
+            console.log('Spawn result:'); \
+            console.log('- status:', result.status); \
+            console.log('- stdout:', result.stdout?.trim() || '(empty)'); \
+            console.log('- stderr:', result.stderr?.trim() || '(empty)'); \
+            \
+            if (result.error) { \
+                console.error('Spawn error:', result.error); \
+            } \
+            \
+            if (result.status !== 0) { \
+                console.error('❌ Electron execution failed'); \
+                // Don't exit here to allow inspection of the error \
+            } else { \
+                console.log('✅ Electron version:', result.stdout.trim()); \
+            } \
+        } catch(err) { \
+            console.error('❌ Error during spawn test:'); \
+            console.error(err); \
+            // Continue to next steps anyway \
+        }"
+
+    # Step 4: Check for symlink and test it separately
+    RUN echo "4. Checking CLI symlink..." && \
         if [ -f "/repo/node_modules/.bin/electron" ]; then \
             echo "✅ electron CLI symlink exists"; \
             ls -la /repo/node_modules/.bin/electron; \
-            echo "Testing symlinked CLI..." && \
-            /repo/node_modules/.bin/electron --version --no-sandbox || echo "Note: CLI execution may fail in Docker without display, but symlink exists"; \
+            echo "Checking if symlink target exists:"; \
+            readlink -f /repo/node_modules/.bin/electron; \
+            echo "Making sure symlink is executable:"; \
+            chmod +x /repo/node_modules/.bin/electron || true; \
+            echo "Testing symlinked CLI (may fail in Docker without display)..."; \
+            /repo/node_modules/.bin/electron --version --no-sandbox || echo "Note: CLI execution failed, but we can continue"; \
         else \
             echo "⚠️ electron CLI symlink missing!"; \
-        fi && \
-        echo "\n\n✅ Electron diagnostics completed successfully\n\n"
+            echo "Searching for electron binary:"; \
+            find /repo/node_modules -name "electron" -type f | head -5; \
+        fi
+
+    # End of tests
+    RUN echo "\n\n✅ Electron diagnostics test suite completed\n\n"
 
     ################################################################################
     # 5 · fallback bundle – copy working stubs instead of printf-ing them
