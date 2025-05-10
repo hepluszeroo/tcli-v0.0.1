@@ -41,11 +41,109 @@ async function launchApp(enableCodexIntegration, useFileTransport = false) {
   fs.writeFileSync(path.join(TEST_WORKSPACE, 'test-note.md'), '# Test Note\n\nThis is a test note for the smoke test.');
   log(`✅ Created test workspace at ${TEST_WORKSPACE}`);
 
-  // Create test settings
-  const SETTINGS_DIR = path.join(os.homedir(), '.tangent');
+  // Get the correct Electron executable to query the userData path
+  // We need the same electron that we'll be launching to ensure consistent paths
+  // Find the appropriate Electron executable
+  let electronExecForPath;
+
+  if (process.platform === 'darwin') {
+    // Try packaged app first
+    const macApp = path.join(TANGENT_DIR, 'dist', 'mac', 'Tangent.app', 'Contents', 'MacOS', 'Tangent');
+
+    if (fs.existsSync(macApp)) {
+      electronExecForPath = macApp;
+      log(`Using packaged Mac app for settings path: ${electronExecForPath}`);
+    } else {
+      // Fall back to development electron
+      electronExecForPath = path.join(TANGENT_DIR, 'node_modules', '.bin', 'electron');
+      log(`Using development electron for settings path: ${electronExecForPath}`);
+    }
+  } else if (process.platform === 'win32') {
+    // Try packaged app for Windows
+    const winApp = path.join(TANGENT_DIR, 'dist', 'win-unpacked', 'Tangent.exe');
+
+    if (fs.existsSync(winApp)) {
+      electronExecForPath = winApp;
+      log(`Using packaged Windows app for settings path: ${electronExecForPath}`);
+    } else {
+      // Fall back to development electron
+      electronExecForPath = path.join(TANGENT_DIR, 'node_modules', '.bin', 'electron.cmd');
+      log(`Using development electron for settings path: ${electronExecForPath}`);
+    }
+  } else {
+    // Linux
+    const linuxApp = path.join(TANGENT_DIR, 'dist', 'linux-unpacked', 'tangent');
+
+    if (fs.existsSync(linuxApp)) {
+      electronExecForPath = linuxApp;
+      log(`Using packaged Linux app for settings path: ${electronExecForPath}`);
+    } else {
+      // Fall back to development electron
+      electronExecForPath = path.join(TANGENT_DIR, 'node_modules', '.bin', 'electron');
+      log(`Using development electron for settings path: ${electronExecForPath}`);
+    }
+  }
+
+  // Determine the correct settings path by asking Electron directly
+  let userDataPath;
+  let SETTINGS_FILE;
+
+  try {
+    // Use execSync to get the path synchronously
+    log(`Getting userData path from Electron at: ${electronExecForPath}`);
+
+    // We need to use different approaches for packaged vs. development Electron
+    if (electronExecForPath.includes('Tangent.app') ||
+        electronExecForPath.includes('Tangent.exe') ||
+        (process.platform === 'linux' && path.basename(electronExecForPath) === 'tangent')) {
+      // Packaged app - Use a temporary script to get userData path
+      const tempScriptPath = path.join(os.tmpdir(), `get-app-path-${Date.now()}.js`);
+      fs.writeFileSync(tempScriptPath, `
+        const { app } = require('electron');
+        app.whenReady().then(() => {
+          console.log(app.getPath('userData'));
+          process.exit(0);
+        });
+      `);
+
+      try {
+        // For packaged app, we don't need to pass the app directory
+        const { execSync } = require('child_process');
+        userDataPath = execSync(`"${electronExecForPath}" ${tempScriptPath}`, { encoding: 'utf8' }).trim();
+        log(`Packaged app userData path: ${userDataPath}`);
+
+        // Use settings.json for packaged app
+        SETTINGS_FILE = path.join(userDataPath, 'settings.json');
+      } catch (execError) {
+        log(`Error getting packaged app userData path: ${execError.message}`);
+        // Fall back to a sensible default
+        userDataPath = path.join(os.homedir(), '.tangent');
+        SETTINGS_FILE = path.join(userDataPath, 'settings.json');
+      } finally {
+        // Clean up temp script
+        try { fs.unlinkSync(tempScriptPath); } catch (e) { /* ignore cleanup errors */ }
+      }
+    } else {
+      // Development electron - Use -e parameter
+      const { execSync } = require('child_process');
+      userDataPath = execSync(`"${electronExecForPath}" -e "const {app}=require('electron'); app.whenReady().then(()=>{console.log(app.getPath('userData'));process.exit(0);});"`, { encoding: 'utf8' }).trim();
+      log(`Development app userData path: ${userDataPath}`);
+
+      // Use dev_settings.json for development builds
+      SETTINGS_FILE = path.join(userDataPath, 'dev_settings.json');
+    }
+  } catch (error) {
+    log(`Error determining settings path: ${error.message}`);
+    // Fall back to a sensible default
+    userDataPath = path.join(os.homedir(), '.tangent');
+    SETTINGS_FILE = path.join(userDataPath, 'settings.json');
+  }
+
+  // Create settings directory if it doesn't exist
+  const SETTINGS_DIR = path.dirname(SETTINGS_FILE);
   fs.mkdirSync(SETTINGS_DIR, { recursive: true });
 
-  const SETTINGS_FILE = path.join(SETTINGS_DIR, 'settings.json');
+  // Create the settings file with the appropriate configuration
   const settings = {
     enableCodexIntegration,
     workspaces: [
@@ -55,8 +153,12 @@ async function launchApp(enableCodexIntegration, useFileTransport = false) {
       }
     ]
   };
+
   fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
-  log(`✅ Created test settings with enableCodexIntegration=${enableCodexIntegration}`);
+  log(`✅ Created test settings at ${SETTINGS_FILE} with enableCodexIntegration=${enableCodexIntegration}`);
+
+  // Save the settings path for later reference in the app
+  env.SETTINGS_FILE_PATH = SETTINGS_FILE;
 
   // Set up file transport if needed
   let MOCK_CODEX_OUT = null;
@@ -69,19 +171,34 @@ async function launchApp(enableCodexIntegration, useFileTransport = false) {
   // Prepare environment variables
   const env = {
     ...process.env,
+    // Tangent-specific variables
     TANGENT_TEST_MODE: '1',
+
+    // Codex integration variables
     MOCK_CODEX_PATH: path.join(__dirname, 'mock_codex_headless.js'),
+    MOCK_CODEX_DEBUG: '1',  // Enable verbose logging in mock_codex_headless.js
+    MOCK_CODEX_ARGS: '--delay 500', // Add slight delay to ensure proper IPC
     INTEGRATION_TEST_USE_FILE_TRANSPORT: useFileTransport ? '1' : '0',
     ENABLE_CODEX_INTEGRATION: enableCodexIntegration ? '1' : '0',
-    DEBUG: 'codex',  // Enable codex debug logging
+    CODEX_BINARY_PATH: path.join(__dirname, 'mock_codex_headless.js'), // Backup path reference
+
+    // Debug flags
+    DEBUG: 'codex,codex:*,tangent:*',  // Enable all Codex and Tangent debug logs
+
     // Enhanced diagnostic variables
     ELECTRON_ENABLE_LOGGING: '1',
     ELECTRON_DEBUG_LOG: '1',
+    ELECTRON_DISABLE_SECURITY_WARNINGS: '1', // Reduce noise in logs
     E2E_DEVTOOLS: '1',  // Enable DevTools for additional debugging
-    PACKAGED_APP_SMOKE_TEST: '1'  // Signal that we're running the smoke test
+    PACKAGED_APP_SMOKE_TEST: '1',  // Signal that we're running the smoke test
+
+    // Set Node options for additional debugging if needed
+    NODE_OPTIONS: '--trace-warnings --trace-exit'
   };
 
-  if (useFileTransport && MOCK_CODEX_OUT) {
+  // Always set MOCK_CODEX_OUT for consistent behavior, even when file transport is disabled
+  // This ensures the mock Codex can always write to a file, which helps with diagnostics
+  if (MOCK_CODEX_OUT) {
     env.MOCK_CODEX_OUT = MOCK_CODEX_OUT;
   }
 
@@ -95,28 +212,69 @@ async function launchApp(enableCodexIntegration, useFileTransport = false) {
     }
   });
 
-  // Find the Electron executable
+  // Find the appropriate Electron executable
+  // We'll check for both the packaged app binary and the development electron
   let electronPath;
+  let appDirArg; // This is only needed for development electron, not for packaged app
+
   if (process.platform === 'darwin') {
-    // Use development electron for testing
-    electronPath = path.join(TANGENT_DIR, 'node_modules', '.bin', 'electron');
+    // First try to find the packaged app
+    const macApp = path.join(TANGENT_DIR, 'dist', 'mac', 'Tangent.app', 'Contents', 'MacOS', 'Tangent');
+
+    if (fs.existsSync(macApp)) {
+      electronPath = macApp;
+      appDirArg = undefined; // Packaged app needs no arg
+      log(`✅ Found packaged Mac app: ${electronPath}`);
+    } else {
+      // Fall back to development electron
+      electronPath = path.join(TANGENT_DIR, 'node_modules', '.bin', 'electron');
+      appDirArg = TANGENT_DIR; // When using development electron, we need to specify the app directory
+      log(`⚠️ Packaged app not found, using development electron: ${electronPath}`);
+    }
   } else if (process.platform === 'win32') {
-    electronPath = path.join(TANGENT_DIR, 'node_modules', '.bin', 'electron.cmd');
+    // Try packaged app first (Windows)
+    const winApp = path.join(TANGENT_DIR, 'dist', 'win-unpacked', 'Tangent.exe');
+
+    if (fs.existsSync(winApp)) {
+      electronPath = winApp;
+      appDirArg = undefined; // Packaged app needs no arg
+      log(`✅ Found packaged Windows app: ${electronPath}`);
+    } else {
+      // Fall back to development electron
+      electronPath = path.join(TANGENT_DIR, 'node_modules', '.bin', 'electron.cmd');
+      appDirArg = TANGENT_DIR; // When using development electron, we need to specify the app directory
+      log(`⚠️ Packaged app not found, using development electron: ${electronPath}`);
+    }
   } else {
-    // Linux
-    electronPath = path.join(TANGENT_DIR, 'node_modules', '.bin', 'electron');
+    // Linux - try packaged app first
+    const linuxApp = path.join(TANGENT_DIR, 'dist', 'linux-unpacked', 'tangent');
+
+    if (fs.existsSync(linuxApp)) {
+      electronPath = linuxApp;
+      appDirArg = undefined; // Packaged app needs no arg
+      log(`✅ Found packaged Linux app: ${electronPath}`);
+    } else {
+      // Fall back to development electron
+      electronPath = path.join(TANGENT_DIR, 'node_modules', '.bin', 'electron');
+      appDirArg = TANGENT_DIR; // When using development electron, we need to specify the app directory
+      log(`⚠️ Packaged app not found, using development electron: ${electronPath}`);
+    }
   }
 
   if (!fs.existsSync(electronPath)) {
     throw new Error(`Electron executable not found: ${electronPath}`);
   }
-  log(`✅ Found Electron executable: ${electronPath}`);
+  log(`✅ Found executable: ${electronPath}`);
+  log(`✅ App directory argument: ${appDirArg || '(none needed for packaged app)'}`);
 
   // Launch the app
-  log(`[SMOKE_SCRIPT] Launching packaged app with executable: ${electronPath}`);
-  log(`[SMOKE_SCRIPT] Launching packaged app with env: ${JSON.stringify(env, null, 2)}`);
+  log(`[SMOKE_SCRIPT] Launching app with executable: ${electronPath}`);
+  log(`[SMOKE_SCRIPT] Launching app with env: ${JSON.stringify(env, null, 2)}`);
 
-  const tangentProcess = spawn(electronPath, [TANGENT_DIR], {
+  // Create the command line args array - only pass app directory if using development electron
+  const spawnArgs = appDirArg ? [appDirArg] : [];
+
+  const tangentProcess = spawn(electronPath, spawnArgs, {
     env,
     stdio: 'pipe'
   });
@@ -196,19 +354,57 @@ async function launchApp(enableCodexIntegration, useFileTransport = false) {
 
   // Check file transport output if used
   let fileTransportOutput = '';
-  if (useFileTransport && MOCK_CODEX_OUT && fs.existsSync(MOCK_CODEX_OUT)) {
+  let foundCodexReady = false;
+  if (MOCK_CODEX_OUT && fs.existsSync(MOCK_CODEX_OUT)) {
     fileTransportOutput = fs.readFileSync(MOCK_CODEX_OUT, 'utf8');
-    if (fileTransportOutput.includes('codex_ready')) {
-      log('⚠️ Found codex_ready message in file transport');
+    log(`📋 File transport contents (first 500 chars): ${fileTransportOutput.substring(0, 500)}`);
+
+    // Look for the codex_ready message specifically - this is our critical verification point
+    // We are looking for a proper JSON object, not just a string
+    try {
+      // Split the content by newlines to get individual JSON objects
+      const jsonLines = fileTransportOutput.split('\n').filter(line => line.trim());
+      log(`📋 Found ${jsonLines.length} lines in file transport output`);
+
+      for (const line of jsonLines) {
+        try {
+          const json = JSON.parse(line);
+          log(`📋 Parsed JSON: ${JSON.stringify(json)}`);
+
+          // Check specifically for the codex_ready message type
+          if (json.type === 'codex_ready') {
+            log('✅ Found proper codex_ready message in file transport');
+            foundCodexReady = true;
+            sawCodexStart = true;
+            break;
+          }
+        } catch (jsonErr) {
+          log(`Warning: Could not parse JSON line: ${line.substring(0, 100)}`);
+        }
+      }
+    } catch (parseErr) {
+      log(`Error parsing file transport output: ${parseErr.message}`);
+    }
+
+    // If we didn't find a proper codex_ready message but found the text, log it as a fallback
+    if (!foundCodexReady && fileTransportOutput.includes('codex_ready')) {
+      log('⚠️ Found codex_ready text in file transport, but not as a proper JSON message');
       sawCodexStart = true;
     }
 
     // Cleanup
     try {
+      // Save a copy for debugging before deleting
+      const debugCopy = `${MOCK_CODEX_OUT}.debug`;
+      fs.copyFileSync(MOCK_CODEX_OUT, debugCopy);
+      log(`📋 Saved debug copy of file transport output to ${debugCopy}`);
+
       fs.unlinkSync(MOCK_CODEX_OUT);
     } catch (err) {
       log(`Warning: Could not delete ${MOCK_CODEX_OUT}: ${err.message}`);
     }
+  } else if (useFileTransport && MOCK_CODEX_OUT) {
+    log(`❌ File transport file not found: ${MOCK_CODEX_OUT}`);
   }
 
   return {
@@ -216,7 +412,10 @@ async function launchApp(enableCodexIntegration, useFileTransport = false) {
     sawCodexExit,
     stdout,
     stderr,
-    fileTransportOutput
+    fileTransportOutput,
+    foundCodexReady, // Add the specific flag for codex_ready JSON message
+    mockCodexPath: env.MOCK_CODEX_PATH, // Include paths for diagnostics
+    mockCodexOut: env.MOCK_CODEX_OUT
   };
 }
 
@@ -248,11 +447,42 @@ async function runTests() {
       log('\n--- TEST 2: File Transport on macOS ---');
       const fileTransportResult = await launchApp(true, true);
 
-      // Report results for test 2
+      // Report results for test 2 with enhanced checks
       if (fileTransportResult.sawCodexStart) {
+        // sawCodexStart will be true if we found codex_ready in the MOCK_CODEX_OUT file
         log('✅ FILE TRANSPORT TEST PASSED: Codex process started with file transport');
+
+        // Additional diagnostic info to help with debugging
+        if (fileTransportResult.fileTransportOutput) {
+          const lines = fileTransportResult.fileTransportOutput.split('\n').filter(Boolean).length;
+          log(`   - File transport contained ${lines} lines of output`);
+          log(`   - First 100 chars: ${fileTransportResult.fileTransportOutput.substring(0, 100)}...`);
+        } else {
+          log('   - WARNING: File transport was empty despite sawCodexStart being true');
+        }
       } else {
+        // If the test failed, provide detailed diagnostics to help debug
         log('❌ FILE TRANSPORT TEST FAILED: Codex process did not start with file transport');
+        log('Diagnostics:');
+        log(`   - File transport path: ${MOCK_CODEX_OUT}`);
+        log(`   - File existed: ${fs.existsSync(MOCK_CODEX_OUT+'.debug') ? 'Yes (.debug copy)' : 'No'}`);
+        log(`   - sawCodexStart: ${fileTransportResult.sawCodexStart}`);
+
+        // Check process stdout for relevant diagnostic information
+        if (fileTransportResult.stdout.includes('[CPM_SMOKE_DIAG]')) {
+          const diagLine = fileTransportResult.stdout.split('\n')
+            .find(line => line.includes('[CPM_SMOKE_DIAG]'));
+          log(`   - Found diagnostic: ${diagLine}`);
+        } else {
+          log('   - No [CPM_SMOKE_DIAG] marker found in stdout');
+        }
+
+        // Check stderr for errors
+        if (fileTransportResult.stderr) {
+          log('   - stderr content (first 200 chars):');
+          log(`     ${fileTransportResult.stderr.substring(0, 200)}...`);
+        }
+
         process.exit(1);
       }
     } else {

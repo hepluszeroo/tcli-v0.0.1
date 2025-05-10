@@ -14,11 +14,50 @@
 const fs = require('fs');
 const path = require('path');
 
-// Configuration
-const TANGENT_DIR = path.join(__dirname, '..', 'Tangent-main', 'apps', 'tangent-electron');
+// Configuration - Adding debug info for CI
+console.log('Current directory:', process.cwd());
+console.log('Script directory:', __dirname);
+
+// Try both relative and absolute paths for more robustness
+const REPO_ROOT = process.env.GITHUB_WORKSPACE || path.resolve(__dirname, '..');
+console.log('Repository root:', REPO_ROOT);
+
+// Enhanced path resolution with fallbacks
+let TANGENT_DIR;
+// First try the expected relative path (development environment)
+const relPath = path.join(__dirname, '..', 'Tangent-main', 'apps', 'tangent-electron');
+// Then try direct from repo root (CI environment)
+const ciPath = path.join(REPO_ROOT, 'Tangent-main', 'apps', 'tangent-electron');
+
+// Check which path exists
+if (fs.existsSync(path.join(relPath, 'src'))) {
+  TANGENT_DIR = relPath;
+  console.log('Using relative path to Tangent directory:', TANGENT_DIR);
+} else if (fs.existsSync(path.join(ciPath, 'src'))) {
+  TANGENT_DIR = ciPath;
+  console.log('Using CI path to Tangent directory:', TANGENT_DIR);
+} else {
+  console.log('WARNING: Could not find Tangent directory at expected paths');
+  console.log('Checking for Tangent-main directory in repo root...');
+  const rootPath = path.join(REPO_ROOT, 'Tangent-main');
+  if (fs.existsSync(rootPath)) {
+    console.log('Found Tangent-main at:', rootPath);
+    console.log('Directory contents:', fs.readdirSync(rootPath));
+    if (fs.existsSync(path.join(rootPath, 'apps'))) {
+      console.log('apps directory contents:', fs.readdirSync(path.join(rootPath, 'apps')));
+    }
+  }
+  // Default to the original path for backward compatibility
+  TANGENT_DIR = relPath;
+}
+
 const COMMON_SETTINGS_PATH = path.join(TANGENT_DIR, 'src', 'common', 'settings', 'Settings.ts');
 const WORKSPACE_PATH = path.join(TANGENT_DIR, 'src', 'main', 'Workspace.ts');
 const SETTINGS_PATH = path.join(TANGENT_DIR, 'src', 'main', 'settings.ts');
+
+console.log('Path to Settings.ts:', COMMON_SETTINGS_PATH);
+console.log('Path to Workspace.ts:', WORKSPACE_PATH);
+console.log('Path to settings.ts:', SETTINGS_PATH);
 
 console.log('Verifying Dark Launch configuration...');
 
