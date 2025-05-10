@@ -96,13 +96,29 @@ jobs:
             # Run directly on macOS with file transport enabled
             cd Tangent-main/apps/tangent-electron
             echo "DEBUG: Running Playwright from $(pwd)"
-            echo "DEBUG: Using grep 'Codex' filter (project=Tests) for Playwright discovery"
+            echo "DEBUG: Verifying playwright.config.ts exists and is readable:"
+            cat playwright.config.ts | head -20 || echo "ERROR: Cannot read playwright.config.ts"
+            echo "DEBUG: Showing all test files in tests-integration directory:"
             ls -la tests-integration/
-            echo "Listing tests…"
+            echo "DEBUG: File permissions of test files:"
+            find tests-integration -name "*.test.ts" -type f -exec ls -la {} \;
+            echo "DEBUG: Sample test content check:"
+            head -10 tests-integration/codex_happy_path.test.ts || echo "ERROR: Cannot read test file"
+
+            echo "DEBUG: Running Playwright with maximum debug logging:"
+            DEBUG=pw:* INTEGRATION_TEST_USE_FILE_TRANSPORT=1 CODEX_DEBUG_TIMERS=1 DUMP_HANDLES=1 \
             pnpm exec playwright test --config=./playwright.config.ts --project Tests --grep Codex --list
 
-            echo "Running Codex tests…"
-            DEBUG=pw:api,pw:test,codex,main,mock-codex INTEGRATION_TEST_USE_FILE_TRANSPORT=1 CODEX_DEBUG_TIMERS=1 DUMP_HANDLES=1 \
+            echo "DEBUG: Trying without project filter:"
+            DEBUG=pw:api,pw:test,pw:config,pw:runner INTEGRATION_TEST_USE_FILE_TRANSPORT=1 \
+            pnpm exec playwright test --config=./playwright.config.ts --list
+
+            echo "DEBUG: Trying with explicit test file path:"
+            DEBUG=pw:api,pw:test,pw:config,pw:runner INTEGRATION_TEST_USE_FILE_TRANSPORT=1 \
+            pnpm exec playwright test tests-integration/codex_happy_path.test.ts --config=./playwright.config.ts --list
+
+            echo "Running Codex tests if discovery succeeded:"
+            DEBUG=pw:api,pw:test,pw:config,pw:runner,codex,main,mock-codex INTEGRATION_TEST_USE_FILE_TRANSPORT=1 CODEX_DEBUG_TIMERS=1 DUMP_HANDLES=1 \
             pnpm exec playwright test --config=./playwright.config.ts --project Tests --grep Codex --workers 1 --reporter=list --timeout=60000
           else
             # Run Docker container on Linux with Xvfb for display server
