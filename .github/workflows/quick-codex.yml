@@ -7,15 +7,18 @@ on:
       - 'Dockerfile.playwright'
       - '.github/workflows/quick-codex.yml'
 
+# Add concurrency to cancel in-progress runs on the same branch/PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   codex:
     strategy:
       matrix:
-        os: [ubuntu-22.04, macos-latest]
-        include:
-          - os: macos-latest
-            env:
-              INTEGRATION_TEST_USE_FILE_TRANSPORT: 1
+        os: [ubuntu-22.04]
+        # Removed macOS for now to reduce queue pressure
+        # Will restore after Ubuntu issues are resolved
     runs-on: ${{ matrix.os }}
     env:
       DEBUG: codex

@@ -15,7 +15,7 @@ concurrency:
 jobs:
   verify-dark-launch:
     name: Verify Dark Launch Configuration
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 5
 
     steps:
