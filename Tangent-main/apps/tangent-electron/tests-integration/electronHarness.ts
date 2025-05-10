@@ -210,12 +210,41 @@ export async function launchElectron(opts: {
       args: finalArgs,
       env: electronEnv
     });
-    
+
+    // Part IV: Add a timeout for electron.firstWindow() to catch potential hangs
+    console.log('[electronHarness] Waiting for first window to load (timeout: 20s)...');
+    try {
+      const firstWindowTimeout = 20000; // 20 seconds
+      const firstWindowPromise = app.firstWindow({ timeout: firstWindowTimeout });
+
+      // Create a race between the firstWindow and a timeout
+      const window = await Promise.race([
+        firstWindowPromise,
+        new Promise<never>((_, reject) => {
+          setTimeout(() => {
+            reject(new Error(`[FATAL] Timed out waiting for first window after ${firstWindowTimeout}ms. Electron may be stuck launching.`));
+          }, firstWindowTimeout);
+        })
+      ]);
+
+      console.log('[electronHarness] First window loaded successfully!');
+    } catch (windowError) {
+      console.error('[electronHarness] Error getting first window:', windowError);
+      // Collect additional diagnostics if available
+      try {
+        const pages = await app.context().pages();
+        console.log(`[electronHarness] Found ${pages.length} pages/windows`);
+      } catch (diagError) {
+        console.error('[electronHarness] Could not get diagnostic page info:', diagError);
+      }
+      // Don't throw here - let the test continue and likely fail with a better error message
+    }
+
     // Return the app interface (no child process handle needed)
     return { app };
-    
+
   } catch (error) {
-    console.error('Failed to launch Electron:', error);
+    console.error('[electronHarness] Failed to launch Electron:', error);
     throw error;
   }
 }

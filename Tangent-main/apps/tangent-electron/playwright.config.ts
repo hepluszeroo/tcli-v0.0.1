@@ -13,6 +13,8 @@ export default defineConfig<TangentOptions>({
 	// directory. This avoids accidental matches elsewhere (e.g. unit/benchmark
 	// folders) and makes CLI path filters simpler across CI platforms.
 	testDir: './tests-integration',
+	// Part IV: Add global timeout to prevent infinite hangs
+	globalTimeout: 300000, // 5 minutes max for entire suite
 	projects: [
 		{
 			name: 'Tests',

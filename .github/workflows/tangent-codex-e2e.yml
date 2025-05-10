@@ -92,47 +92,51 @@ jobs:
 
       - name: Run Codex integration tests
         run: |
+          # Step 1: Always run from repo root with absolute paths
+          # Step 2: Add sanity check for Playwright CLI
+          echo "DEBUG: Verifying Playwright CLI is accessible:"
+          node -e "require('@playwright/test/lib/cli/').printVersion();" || { echo "❌ Playwright CLI not accessible"; exit 1; }
+
+          echo "DEBUG: Current working directory: $(pwd)"
+
+          echo "DEBUG: Verifying config and test files exist:"
+          ls -la Tangent-main/apps/tangent-electron/playwright.config.ts || echo "❌ playwright.config.ts not found"
+          ls -la Tangent-main/apps/tangent-electron/tests-integration/codex_*.test.ts || echo "❌ Test files not found"
+
           if [ "$RUNNER_OS" == "macOS" ]; then
-            # Run directly on macOS with file transport enabled
-            cd Tangent-main/apps/tangent-electron
-            echo "DEBUG: Running Playwright from $(pwd)"
-            echo "DEBUG: Verifying playwright.config.ts exists and is readable:"
-            cat playwright.config.ts | head -20 || echo "ERROR: Cannot read playwright.config.ts"
-            echo "DEBUG: Showing all test files in tests-integration directory:"
-            ls -la tests-integration/
-            echo "DEBUG: File permissions of test files:"
-            find tests-integration -name "*.test.ts" -type f -exec ls -la {} \;
-            echo "DEBUG: Sample test content check:"
-            head -10 tests-integration/codex_happy_path.test.ts || echo "ERROR: Cannot read test file"
-
-            echo "DEBUG: Running Playwright with maximum debug logging:"
-            DEBUG=pw:* INTEGRATION_TEST_USE_FILE_TRANSPORT=1 CODEX_DEBUG_TIMERS=1 DUMP_HANDLES=1 \
-            pnpm exec playwright test --config=./playwright.config.ts --project Tests --grep Codex --list
-
-            echo "DEBUG: Trying without project filter:"
+            # Step 3: Fail fast if no tests discovered
+            echo "DEBUG: Listing tests to verify discovery (will fail if none found):"
             DEBUG=pw:api,pw:test,pw:config,pw:runner INTEGRATION_TEST_USE_FILE_TRANSPORT=1 \
-            pnpm exec playwright test --config=./playwright.config.ts --list
+            pnpm --filter tangent_electron exec playwright test \
+              --config=./Tangent-main/apps/tangent-electron/playwright.config.ts \
+              --project Tests --grep Codex --list || { echo "❌ No tests discovered"; exit 1; }
 
-            echo "DEBUG: Trying with explicit test file path:"
-            DEBUG=pw:api,pw:test,pw:config,pw:runner INTEGRATION_TEST_USE_FILE_TRANSPORT=1 \
-            pnpm exec playwright test tests-integration/codex_happy_path.test.ts --config=./playwright.config.ts --list
-
-            echo "Running Codex tests if discovery succeeded:"
+            echo "DEBUG: Running Playwright tests with absolute paths:"
+            # Run on macOS with file transport enabled
             DEBUG=pw:api,pw:test,pw:config,pw:runner,codex,main,mock-codex INTEGRATION_TEST_USE_FILE_TRANSPORT=1 CODEX_DEBUG_TIMERS=1 DUMP_HANDLES=1 \
-            pnpm exec playwright test --config=./playwright.config.ts --project Tests --grep Codex --workers 1 --reporter=list --timeout=60000
+            pnpm --filter tangent_electron exec playwright test \
+              --config=./Tangent-main/apps/tangent-electron/playwright.config.ts \
+              --project Tests --grep Codex --workers 1 --reporter=list --timeout=60000
           else
             # Run Docker container on Linux with Xvfb for display server
+            # Step 3 for Docker: Fail fast if no tests discovered, then run tests
             docker run --rm \
               --platform linux/amd64 \
               -e PLAYWRIGHT_IN_DOCKER=1 \
-              -e DEBUG=codex \
+              -e DEBUG=pw:api,pw:test,pw:config,pw:runner,codex \
               -e CODEX_DEBUG_TIMERS=1 \
               -e DUMP_HANDLES=1 \
               tangent-codex-tests:amd64 \
-              xvfb-run --server-num=99 --server-args="-screen 0 1280x720x24" \
-              DEBUG=pw:api,pw:test,codex,main,mock-codex pnpm exec playwright test \
+              /bin/bash -c "echo 'DEBUG: Listing tests to verify discovery:' && \
+              xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' \
+              pnpm exec playwright test \
                 --config=./Tangent-main/apps/tangent-electron/playwright.config.ts \
-                --project Tests --grep Codex --workers 1 --reporter=list
+                --project Tests --grep Codex --list || { echo '❌ No tests discovered'; exit 1; } && \
+              echo 'DEBUG: Running tests:' && \
+              xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' \
+              pnpm exec playwright test \
+                --config=./Tangent-main/apps/tangent-electron/playwright.config.ts \
+                --project Tests --grep Codex --workers 1 --reporter=list --timeout=60000"
           fi
 
       - name: Upload test report
