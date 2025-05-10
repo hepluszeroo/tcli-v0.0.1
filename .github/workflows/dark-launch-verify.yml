@@ -7,6 +7,11 @@ on:
     branches: [main]
   workflow_dispatch:  # Allow manual triggering
 
+# Add concurrency to cancel in-progress runs on the same branch/PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   verify-dark-launch:
     name: Verify Dark Launch Configuration
