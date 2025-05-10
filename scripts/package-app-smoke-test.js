@@ -92,6 +92,33 @@ async function launchApp(enableCodexIntegration, useFileTransport = false) {
     // Use execSync to get the path synchronously
     log(`Getting userData path from Electron at: ${electronExecForPath}`);
 
+    // Add a cache to store userDataPath between runs (in-memory, works for the current test run only)
+    // This is a simple approach - a more robust solution would be to use a file-based cache
+    if (!process.env._CACHED_USER_DATA_PATH) {
+      log(`No cached userData path found, resolving from Electron...`);
+    } else {
+      log(`Using cached userData path: ${process.env._CACHED_USER_DATA_PATH}`);
+      userDataPath = process.env._CACHED_USER_DATA_PATH;
+
+      // Return early with the cached path
+      SETTINGS_FILE = path.join(userDataPath,
+        electronExecForPath.includes('Tangent.app') ||
+        electronExecForPath.includes('Tangent.exe') ||
+        (process.platform === 'linux' && path.basename(electronExecForPath) === 'tangent')
+          ? 'settings.json'  // Packaged app
+          : 'dev_settings.json'  // Development
+      );
+
+      log(`Using cached settings path: ${SETTINGS_FILE}`);
+
+      // Skip the expensive Electron launch
+      if (userDataPath && SETTINGS_FILE) {
+        // Create settings directory if it doesn't exist
+        fs.mkdirSync(path.dirname(SETTINGS_FILE), { recursive: true });
+        return { userDataPath, SETTINGS_FILE };
+      }
+    }
+
     // We need to use different approaches for packaged vs. development Electron
     if (electronExecForPath.includes('Tangent.app') ||
         electronExecForPath.includes('Tangent.exe') ||
@@ -109,7 +136,10 @@ async function launchApp(enableCodexIntegration, useFileTransport = false) {
       try {
         // For packaged app, we don't need to pass the app directory
         const { execSync } = require('child_process');
-        userDataPath = execSync(`"${electronExecForPath}" ${tempScriptPath}`, { encoding: 'utf8' }).trim();
+        // Add --no-sandbox flag for Linux CI
+        const noSandboxFlag = process.platform === 'linux' && process.env.CI ? '--no-sandbox ' : '';
+        userDataPath = execSync(`"${electronExecForPath}" ${noSandboxFlag}${tempScriptPath}`, { encoding: 'utf8' }).trim();
+        log(`Command executed: "${electronExecForPath}" ${noSandboxFlag}${tempScriptPath}`);
         log(`Packaged app userData path: ${userDataPath}`);
 
         // Use settings.json for packaged app
@@ -126,7 +156,11 @@ async function launchApp(enableCodexIntegration, useFileTransport = false) {
     } else {
       // Development electron - Use -e parameter
       const { execSync } = require('child_process');
-      userDataPath = execSync(`"${electronExecForPath}" -e "const {app}=require('electron'); app.whenReady().then(()=>{console.log(app.getPath('userData'));process.exit(0);});"`, { encoding: 'utf8' }).trim();
+      // Add --no-sandbox flag for Linux CI
+      const noSandboxFlag = process.platform === 'linux' && process.env.CI ? '--no-sandbox ' : '';
+      const command = `"${electronExecForPath}" ${noSandboxFlag} -e "const {app}=require('electron'); app.whenReady().then(()=>{console.log(app.getPath('userData'));process.exit(0);});"`;
+      log(`Command executed: ${command}`);
+      userDataPath = execSync(command, { encoding: 'utf8' }).trim();
       log(`Development app userData path: ${userDataPath}`);
 
       // Use dev_settings.json for development builds
@@ -138,6 +172,14 @@ async function launchApp(enableCodexIntegration, useFileTransport = false) {
     userDataPath = path.join(os.homedir(), '.tangent');
     SETTINGS_FILE = path.join(userDataPath, 'settings.json');
   }
+
+  // Fail fast if userData path is empty - this is a critical issue
+  if (!userDataPath || userDataPath.trim() === '') {
+    throw new Error('CRITICAL ERROR: Failed to determine userData path - cannot continue with smoke test');
+  }
+
+  // Cache the userData path for future runs
+  process.env._CACHED_USER_DATA_PATH = userDataPath;
 
   // Create settings directory if it doesn't exist
   const SETTINGS_DIR = path.dirname(SETTINGS_FILE);
@@ -157,9 +199,6 @@ async function launchApp(enableCodexIntegration, useFileTransport = false) {
   fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
   log(`✅ Created test settings at ${SETTINGS_FILE} with enableCodexIntegration=${enableCodexIntegration}`);
 
-  // Save the settings path for later reference in the app
-  env.SETTINGS_FILE_PATH = SETTINGS_FILE;
-
   // Set up file transport if needed
   let MOCK_CODEX_OUT = null;
   if (useFileTransport) {
@@ -173,6 +212,9 @@ async function launchApp(enableCodexIntegration, useFileTransport = false) {
     ...process.env,
     // Tangent-specific variables
     TANGENT_TEST_MODE: '1',
+
+    // Save the settings path for reference in the app
+    SETTINGS_FILE_PATH: SETTINGS_FILE,
 
     // Codex integration variables
     MOCK_CODEX_PATH: path.join(__dirname, 'mock_codex_headless.js'),
@@ -191,6 +233,9 @@ async function launchApp(enableCodexIntegration, useFileTransport = false) {
     ELECTRON_DISABLE_SECURITY_WARNINGS: '1', // Reduce noise in logs
     E2E_DEVTOOLS: '1',  // Enable DevTools for additional debugging
     PACKAGED_APP_SMOKE_TEST: '1',  // Signal that we're running the smoke test
+
+    // Disable sandbox on Linux CI to prevent SUID sandbox helper binary errors
+    ...(process.platform === 'linux' && process.env.CI ? { ELECTRON_DISABLE_SANDBOX: '1' } : {})
 
     // Set Node options for additional debugging if needed
     NODE_OPTIONS: '--trace-warnings --trace-exit'
@@ -269,10 +314,32 @@ async function launchApp(enableCodexIntegration, useFileTransport = false) {
 
   // Launch the app
   log(`[SMOKE_SCRIPT] Launching app with executable: ${electronPath}`);
-  log(`[SMOKE_SCRIPT] Launching app with env: ${JSON.stringify(env, null, 2)}`);
+
+  // Only log full environment in debug mode to avoid cluttering the logs
+  if (process.env.DEBUG) {
+    log(`[SMOKE_SCRIPT] Full environment: ${JSON.stringify(env, null, 2)}`);
+  } else {
+    // Log just the most important environment variables
+    const keyEnvVars = {
+      TANGENT_TEST_MODE: env.TANGENT_TEST_MODE,
+      ENABLE_CODEX_INTEGRATION: env.ENABLE_CODEX_INTEGRATION,
+      INTEGRATION_TEST_USE_FILE_TRANSPORT: env.INTEGRATION_TEST_USE_FILE_TRANSPORT,
+      MOCK_CODEX_PATH: env.MOCK_CODEX_PATH,
+      MOCK_CODEX_OUT: env.MOCK_CODEX_OUT,
+      ELECTRON_DISABLE_SANDBOX: env.ELECTRON_DISABLE_SANDBOX || 'not set'
+    };
+    log(`[SMOKE_SCRIPT] Key environment variables: ${JSON.stringify(keyEnvVars, null, 2)}`);
+  }
 
   // Create the command line args array - only pass app directory if using development electron
   const spawnArgs = appDirArg ? [appDirArg] : [];
+
+  // If on Linux CI, add the --no-sandbox flag directly to the arguments
+  if (process.platform === 'linux' && process.env.CI) {
+    spawnArgs.unshift('--no-sandbox');
+  }
+
+  log(`[SMOKE_SCRIPT] Command to execute: ${electronPath} ${spawnArgs.join(' ')}`);
 
   const tangentProcess = spawn(electronPath, spawnArgs, {
     env,
