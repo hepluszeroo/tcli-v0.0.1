@@ -159,46 +159,59 @@ function getElectronExec(): string {
     }
   }
 
-  // This is the original implementation - we keep it as the primary path
+  // UPDATED: We no longer use executablePath() as it doesn't exist in Playwright 1.52
   try {
-    // Import Playwright's electron module to access its executable path
-    // This is the most reliable way to get a compatible Electron binary
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const playwrightElectron = require('@playwright/test')._electron
-    const electronPath = playwrightElectron.executablePath()
+    // Rather than using the non-existent executablePath() method, we'll rely on well-known paths
+    // and our Docker-specific fallbacks which are more reliable anyway
+    console.log('[tangent.ts] Playwright executablePath() is not supported in version 1.52, using fallbacks')
 
-    console.log('[tangent.ts] Using Playwright built-in Electron:', electronPath)
-
-    // Validate the path exists
-    if (!fs.existsSync(electronPath)) {
-      console.error('[tangent.ts] Playwright Electron path does not exist:', electronPath)
-      throw new Error(`Playwright Electron path does not exist: ${electronPath}`)
+    // For Docker environments, we've already handled this above
+    if (process.env.PLAYWRIGHT_IN_DOCKER === '1') {
+      throw new Error('Skipping Playwright Electron path in Docker - using Docker-specific paths instead')
     }
 
-    // Check if the file is executable
-    try {
-      const stats = fs.statSync(electronPath)
-      console.log('[tangent.ts] Electron binary stats:', {
-        size: stats.size,
-        mode: stats.mode.toString(8),
-        isExecutable: !!(stats.mode & 0o111)
-      })
+    // For non-Docker environments, check the common Electron binary locations
+    const commonPaths = [
+      // Try typical npm install locations
+      path.join(process.cwd(), 'node_modules', 'electron', 'dist', 'electron'),
+      path.join(process.cwd(), 'node_modules', '.bin', 'electron'),
+      // Add more common paths as needed
+    ]
 
-      if (!(stats.mode & 0o111)) {
-        console.warn('[tangent.ts] WARNING: Electron binary is not executable!')
-        // Make it executable if needed
+    for (const possiblePath of commonPaths) {
+      console.log('[tangent.ts] Checking for Electron at:', possiblePath)
+      if (fs.existsSync(possiblePath)) {
+        console.log('[tangent.ts] Found Electron at:', possiblePath)
+
+        // Check if the file is executable
         try {
-          fs.chmodSync(electronPath, 0o755);
-          console.log('[tangent.ts] Made Electron binary executable');
-        } catch (chmodErr) {
-          console.warn('[tangent.ts] Could not make binary executable:', chmodErr);
+          const stats = fs.statSync(possiblePath)
+          console.log('[tangent.ts] Electron binary stats:', {
+            size: stats.size,
+            mode: stats.mode.toString(8),
+            isExecutable: !!(stats.mode & 0o111)
+          })
+
+          if (!(stats.mode & 0o111)) {
+            console.warn('[tangent.ts] WARNING: Electron binary is not executable!')
+            // Make it executable if needed
+            try {
+              fs.chmodSync(possiblePath, 0o755);
+              console.log('[tangent.ts] Made Electron binary executable');
+            } catch (chmodErr) {
+              console.warn('[tangent.ts] Could not make binary executable:', chmodErr);
+            }
+          }
+        } catch (statsError) {
+          console.error('[tangent.ts] Error checking Electron stats:', statsError)
         }
+
+        return possiblePath
       }
-    } catch (statsError) {
-      console.error('[tangent.ts] Error checking Electron stats:', statsError)
     }
 
-    return electronPath
+    // If we get here, none of the common paths worked
+    throw new Error('No Electron binary found in common locations')
   } catch (error) {
     console.error('[tangent.ts] Failed to get Playwright Electron path:', error)
 
@@ -326,14 +339,48 @@ function getElectronExec(): string {
   }
 }
 
-const execPath = getElectronExec()
+// Add additional safeguards for Electron binary resolution
+let execPath: string
+try {
+  execPath = getElectronExec()
+  console.log('[tangent.ts] Successfully resolved Electron path:', execPath)
+} catch (error) {
+  console.error('[tangent.ts] CRITICAL ERROR: Failed to get Electron binary path:', error)
+  throw new Error(`Failed to resolve Electron binary: ${error}`)
+}
 
 // Fail early with a friendly hint when the Electron binary is missing
 if (!fs.existsSync(execPath)) {
-  throw new Error(
-    `Electron executable not found at ${execPath}. ` +
-    'Make sure Playwright is properly installed with browsers.'
-  )
+  // Try one last fallback for Docker environments
+  if (process.env.PLAYWRIGHT_IN_DOCKER === '1') {
+    console.error('[tangent.ts] Final attempt to find Electron binary in Docker...')
+
+    const lastResortPaths = [
+      '/ms-playwright/node_modules/electron/dist/electron',
+      '/usr/local/bin/electron'
+    ]
+
+    for (const path of lastResortPaths) {
+      if (fs.existsSync(path)) {
+        console.log('[tangent.ts] Found last-resort Electron at:', path)
+        execPath = path
+        break
+      }
+    }
+
+    if (!fs.existsSync(execPath)) {
+      console.error('[tangent.ts] All fallbacks exhausted. Aborting.')
+      throw new Error(
+        `Electron executable not found at ${execPath} or any fallback locations. ` +
+        'Ensure Electron is properly installed in the Docker container.'
+      )
+    }
+  } else {
+    throw new Error(
+      `Electron executable not found at ${execPath}. ` +
+      'Make sure Playwright is properly installed with browsers.'
+    )
+  }
 }
 
 const mainEntry = path.join(buildDir, 'bundle', 'main.js')

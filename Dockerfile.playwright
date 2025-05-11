@@ -77,7 +77,7 @@ ARG STUB_HASH
     # Switch to root temporarily for ensuring we have necessary dependencies
     USER root
     RUN apt-get update &&\
-        apt-get install -y sudo file ldd strace libgbm1 libasound2 libgtk-3-0 libnss3 &&\
+        apt-get install -y sudo file libc-bin strace libgbm1 libasound2 libgtk-3-0 libnss3 &&\
         echo "✅ System dependencies for Electron installed"
 
     # Switch back to pwuser for Electron installation and validation
@@ -480,72 +480,13 @@ EOS
     ################################################################################
     # 8 · ENTRYPOINT — run the five Codex specs under xvfb
     ################################################################################
-    # Enhanced command with robustness features using a heredoc
-    CMD ["/bin/bash", "-c", "cat > /tmp/run-tests.sh << 'TESTSCRIPT' && chmod +x /tmp/run-tests.sh && /tmp/run-tests.sh
-#!/bin/bash
-set -e
+    # Use the dedicated script file
+    # This avoids Docker parser issues with multiline commands
+    # The script is already copied as part of the COPY . . command
+    RUN chmod +x /repo/scripts/docker-run-tests.sh
 
-echo '===== STARTING TEST EXECUTION ====='
-
-# Run diagnostic script for baseline info
-/repo/debug.sh
-
-# Ensure clean environment (kill any stray processes)
-echo 'Cleaning up any previously running Electron processes...'
-killall -9 electron 2>/dev/null || echo 'No Electron processes to kill'
-killall -9 Xvfb 2>/dev/null || echo 'No Xvfb processes to kill'
-
-# Make sure key directories and files exist with proper permissions
-echo 'Ensuring binary permissions...'
-if [[ -f '/repo/bin/electron' ]]; then
-  chmod +x /repo/bin/electron
-  echo 'Made guaranteed binary executable'
-fi
-
-if [[ -f '/repo/node_modules/electron/dist/electron' ]]; then
-  chmod +x /repo/node_modules/electron/dist/electron
-  echo 'Made standard binary executable'
-else
-  echo 'Standard path not found'
-fi
-
-# Start Xvfb explicitly and verify it's running before tests
-echo 'Starting Xvfb display server...'
-Xvfb :99 -screen 0 1280x720x24 -ac &
-XVFB_PID=$!
-echo \"Started Xvfb process with PID: $XVFB_PID\"
-
-# Wait for Xvfb to initialize fully
-echo 'Waiting for Xvfb to initialize...'
-sleep 2
-
-# Verify display server is running
-echo 'Verifying Xvfb is running:'
-if DISPLAY=:99 xdpyinfo >/dev/null 2>&1; then
-  echo 'Xvfb running properly'
-else
-  echo 'WARNING: Xvfb may not be running correctly'
-fi
-
-# Run the tests with enhanced environment variables
-cd /repo/Tangent-main/apps/tangent-electron
-echo 'Running Playwright tests with enhanced environment...'
-
-DISPLAY=:99 \\
-PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \\
-ELECTRON_DISABLE_SANDBOX=1 \\
-ELECTRON_ENABLE_LOGGING=1 \\
-DUMP_HANDLES=1 \\
-NODE_OPTIONS='--max-old-space-size=4096' \\
-DEBUG=pw:browser*,pw:electron*,electron:*,workspace:*,tangent:*,codex:* \\
-pnpm dlx playwright@1.52.0 test \\
-'tests-integration/codex_*.test.ts' \\
---reporter=list,html \\
---timeout=120000 \\
---workers=1 \\
---retries=1 \\
---debug
-TESTSCRIPT"]
+    # Simple CMD that just runs the script from the repository
+    CMD ["/repo/scripts/docker-run-tests.sh"]
 # Optional cache-buster so this layer rebuilds whenever stub_main.js or the
 # repository HEAD changes.  Supply with
 #   docker build --build-arg STUB_HASH=$(git rev-parse HEAD) …
