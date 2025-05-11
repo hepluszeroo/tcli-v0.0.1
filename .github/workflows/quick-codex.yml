@@ -94,11 +94,15 @@ jobs:
                          exit 1; \
                        fi; \
                        echo \"✅ Runtime verification passed: Node \$(node -v), Electron \$(/repo/bin/electron --version 2>/dev/null)\"; \
+                       # List all test files to verify their presence
+                       find /repo/Tangent-main/apps/tangent-electron/tests-integration -name 'codex_*.test.ts' | sort; \
+                       # List tests matched by filename pattern instead of grep
                        xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' \
                          pnpm exec playwright test --config=playwright.config.ts \
-                         --project Tests --grep Codex --list; \
+                         --project Tests --test-match 'codex_.*\\.test\\.ts' --list; \
+                       # Run tests by filename pattern instead of grep to ensure all Codex tests run
                        DEBUG=pw:api,pw:test,codex,main,mock-codex \
                          xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' \
                          pnpm exec playwright test --config=playwright.config.ts \
-                         --project Tests --grep Codex --workers 1 --reporter=list --timeout=60000"
+                         --project Tests --test-match 'codex_.*\\.test\\.ts' --workers 1 --reporter=list --timeout=60000"
           fi
