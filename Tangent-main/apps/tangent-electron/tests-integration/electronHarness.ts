@@ -289,23 +289,7 @@ export async function launchElectron(opts: {
   // Additional pre-launch verification for Docker
   if (process.env.PLAYWRIGHT_IN_DOCKER === '1') {
     try {
-      // CRITICAL FIX: Get Electron executable directly from Playwright for maximum reliability
-      try {
-        const fs = require('fs');
-        
-        // Use Playwright's built-in electron executablePath as our source of truth
-        const playwrightElectronPath = _electron.executablePath();
-        console.log(`[electronHarness] CRITICAL FIX: Playwright's Electron path: ${playwrightElectronPath}`);
-        
-        if (fs.existsSync(playwrightElectronPath)) {
-          console.log(`[electronHarness] ✅ Playwright's Electron binary exists`);
-          opts.electronBinary = playwrightElectronPath;
-          console.log(`[electronHarness] ✅ OVERRIDING electronBinary with Playwright's version: ${opts.electronBinary}`);
-          fs.chmodSync(playwrightElectronPath, 0o755);
-        }
-      } catch (playwrightElectronErr) {
-        console.error(`[electronHarness] Error getting Playwright's Electron:`, playwrightElectronErr);
-      }
+      // STEP 3: Remove all usage of _electron.executablePath() which doesn't exist in Playwright 1.52
 
       // Check if the workspace argument is correct
       if (workspace) {
@@ -453,14 +437,23 @@ export async function launchElectron(opts: {
       const launchTimeout = process.env.PLAYWRIGHT_IN_DOCKER === '1' ? 90000 : 30000;
       console.log(`[electronHarness] Using launch timeout: ${launchTimeout}ms`);
 
-      const app = await _electron.launch({
-        executablePath: opts.electronBinary,
-        // Use the real build directory as working directory
+      // STEP 4: Let Playwright choose the binary automatically
+      const launchOptions: any = {
         cwd: actualBuildDir,
         args: finalArgs,
         env: electronEnv,
         timeout: launchTimeout
-      });
+      };
+
+      // Only include executablePath if a binary is explicitly provided
+      if (opts.electronBinary) {
+        launchOptions.executablePath = opts.electronBinary;
+        console.log(`[electronHarness] Using provided binary: ${opts.electronBinary}`);
+      } else {
+        console.log(`[electronHarness] Using Playwright's bundled Electron (no executablePath specified)`);
+      }
+
+      const app = await _electron.launch(launchOptions);
 
     // Part IV: Add a timeout for electron.firstWindow() to catch potential hangs
     console.log('[electronHarness] Waiting for first window to load (timeout: 20s)...');
@@ -554,52 +547,10 @@ export async function launchElectron(opts: {
   } catch (outerError) {
     console.error('[electronHarness] ❌ OUTER ERROR DURING LAUNCH OR DIAGNOSTICS:', outerError);
 
-    // One last desperate attempt to get Electron running
+    // STEP 3: Remove all emergency recovery code that uses _electron.executablePath()
+    // which doesn't exist in Playwright 1.52
     if (process.env.PLAYWRIGHT_IN_DOCKER === '1' && outerError.message?.includes('Process failed to launch')) {
-      console.log('[electronHarness] 🚨 ATTEMPTING EMERGENCY RECOVERY LAUNCH 🚨');
-      try {
-        // Emergency launch with minimum options and Playwright-provided Electron
-        console.log('[electronHarness] Using Playwright-bundled Electron as last resort');
-
-        // Get Playwright's built-in electron path
-        const playwrightPath = _electron.executablePath();
-        console.log(`[electronHarness] Playwright built-in Electron: ${playwrightPath}`);
-
-        // Ensure it's executable
-        const fs = require('fs');
-        if (fs.existsSync(playwrightPath)) {
-          fs.chmodSync(playwrightPath, 0o755);
-        }
-
-        // Absolute minimum arguments
-        const minimalArgs = ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
-                            path.join(actualBuildDir, 'bundle', 'main.js')];
-
-        // Minimal environment
-        const minimalEnv = {
-          DISPLAY: ':99',
-          ELECTRON_DISABLE_SANDBOX: '1',
-          ELECTRON_NO_ATTACH_CONSOLE: '1',
-          NODE_ENV: 'test'
-        };
-
-        console.log('[electronHarness] Minimal launch args:', minimalArgs);
-
-        // Last attempt with minimal options
-        const app = await _electron.launch({
-          executablePath: playwrightPath,
-          cwd: actualBuildDir,
-          args: minimalArgs,
-          env: minimalEnv,
-          timeout: 120000 // Extra long timeout
-        });
-
-        console.log('[electronHarness] 🎉 EMERGENCY RECOVERY SUCCESSFUL!');
-        return { app };
-      } catch (recoveryError) {
-        console.error('[electronHarness] 💔 EMERGENCY RECOVERY FAILED:', recoveryError);
-        throw outerError; // Throw the original error
-      }
+      console.log('[electronHarness] ⚠️ Process failed to launch but recovery code removed to avoid executablePath issue');
     }
 
     // If we reached here, all attempts failed

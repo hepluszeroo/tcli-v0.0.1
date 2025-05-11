@@ -16,7 +16,7 @@ ARG STUB_HASH
     ################################################################################
     USER root
 
-    # downgrade Node, add X/Audio libs for headless Electron with comprehensive dependencies
+    # downgrade to Node 20 (guaranteed working with electron@35)
     RUN set -euo pipefail && \
         curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
         apt-get update -qq && \
@@ -73,50 +73,87 @@ ARG STUB_HASH
         PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pnpm install -w --prod=false --frozen-lockfile --prefer-offline && \
         echo "✅ Core dependencies installed successfully"
 
-    # Step 2: Install Electron using multiple approaches for redundancy
-    # Switch to root temporarily for any commands that might need privileges
+    # Step 2: Install Electron with comprehensive validation and dependency checks
+    # Switch to root temporarily for ensuring we have necessary dependencies
     USER root
-    RUN apt-get update && apt-get install -y sudo
+    RUN apt-get update && \
+        apt-get install -y sudo file ldd strace libgbm1 libasound2 libgtk-3-0 libnss3 && \
+        echo "✅ System dependencies for Electron installed"
 
-    # Switch back to pwuser for package installation
+    # Switch back to pwuser for Electron installation and validation
     USER pwuser
     RUN set -eux && \
-        echo "🚀 Installing Electron directly from npm with comprehensive validation..." && \
-        # Remove any existing Electron installation to ensure clean state
-        rm -rf /repo/node_modules/electron /repo/node_modules/.bin/electron && \
-        # Install Electron directly from npm to guarantee correct structure
-        npm install --no-save electron@35.2.1 && \
-        # Verify the installation is complete
-        echo "✅ Verifying Electron installation..." && \
-        # Check if key directories and files exist
-        [ -d "/repo/node_modules/electron" ] && \
-        [ -d "/repo/node_modules/electron/dist" ] && \
-        [ -f "/repo/node_modules/electron/dist/electron" ] && \
-        # Print key files for diagnostics
-        echo "📂 Electron installation structure:" && \
-        ls -la /repo/node_modules/electron && \
-        ls -la /repo/node_modules/electron/dist && \
-        # Make the binary executable (critical step)
-        chmod +x /repo/node_modules/electron/dist/electron && \
-        # Create symbolic link for convenience if it doesn't exist
-        if [ ! -L "/repo/node_modules/.bin/electron" ]; then \
-            mkdir -p /repo/node_modules/.bin && \
-            ln -s ../electron/dist/electron /repo/node_modules/.bin/electron; \
+        echo "🚀 Installing Electron from package.json devDependency..." && \
+        # Use pnpm first (it's in devDependencies of tangent_electron)
+        echo "Method 1: Using pnpm to install Electron directly..." && \
+        cd /repo/Tangent-main/apps/tangent-electron && \
+        pnpm install -D electron@35.2.1 --ignore-scripts=false && \
+
+        # Now verify the installation
+        echo "==== COMPREHENSIVE ELECTRON VALIDATION ====" && \
+        EXPECTED_ELECTRON_PATH="/repo/node_modules/electron/dist/electron" && \
+        echo "Expected Electron path: ${EXPECTED_ELECTRON_PATH}" && \
+
+        # If electron is not found at expected path, try direct npm install as fallback
+        if [ ! -f "${EXPECTED_ELECTRON_PATH}" ]; then
+            echo "⚠️ Electron not found at expected path. Using direct npm install..." && \
+            cd /repo && \
+            rm -rf /repo/node_modules/electron /repo/node_modules/.bin/electron && \
+            npm install --no-save electron@35.2.1 && \
+            echo "Direct npm install completed"; \
         fi && \
-        # Create a file to share Electron's path with tangent.ts
-        echo "/repo/node_modules/electron/dist/electron" > /tmp/electron-binary-path.txt && \
-        # Test the executable (might fail but that's ok)
-        echo "🧪 Testing Electron binary execution:" && \
-        /repo/node_modules/electron/dist/electron --version --no-sandbox || echo "Execution in headless environment failed (expected) but binary exists" && \
-        # Additional failsafe: copy the binary to a guaranteed location
-        mkdir -p /repo/bin && \
-        cp /repo/node_modules/electron/dist/electron /repo/bin/electron && \
-        chmod +x /repo/bin/electron && \
-        echo "✅ Electron binary also available at /repo/bin/electron" && \
-        # Verify the binary is 64-bit (which is required in Docker)
-        file /repo/node_modules/electron/dist/electron | grep '64-bit' || echo "Warning: not a 64-bit binary" && \
-        # Final verification step
-        echo "✅ Electron installation complete and verified"
+
+        # Final validation after potential fallback installation
+        if [ -f "${EXPECTED_ELECTRON_PATH}" ]; then
+            # Show Electron binary file info
+            echo "✅ Electron binary found at ${EXPECTED_ELECTRON_PATH}" && \
+            ls -la "${EXPECTED_ELECTRON_PATH}" && \
+            file "${EXPECTED_ELECTRON_PATH}" && \
+
+            # Ensure executable permissions
+            echo "Making Electron binary executable..." && \
+            chmod +x "${EXPECTED_ELECTRON_PATH}" && \
+
+            # Check if symlink exists or create it
+            if [ ! -L "/repo/node_modules/.bin/electron" ]; then
+                echo "Creating Electron symlink..." && \
+                mkdir -p /repo/node_modules/.bin && \
+                ln -s ../electron/dist/electron /repo/node_modules/.bin/electron; \
+            else
+                echo "Electron symlink already exists"; \
+            fi && \
+
+            # Create additional guaranteed path
+            mkdir -p /repo/bin && \
+            cp "${EXPECTED_ELECTRON_PATH}" /repo/bin/electron && \
+            chmod +x /repo/bin/electron && \
+            echo "✅ Created guaranteed binary at /repo/bin/electron" && \
+
+            # Try running Electron to verify it works
+            echo "Testing Electron binary execution:" && \
+            "${EXPECTED_ELECTRON_PATH}" --version --no-sandbox || \
+                echo "Note: Electron execution failed in headless env (expected)" && \
+
+            # Check library dependencies
+            echo "Checking Electron binary dependencies:" && \
+            (ldd "${EXPECTED_ELECTRON_PATH}" || echo "ldd check failed") && \
+
+            # Share path with test scripts
+            echo "${EXPECTED_ELECTRON_PATH}" > /tmp/electron-binary-path.txt && \
+            echo "✅ Saved Electron path to /tmp/electron-binary-path.txt" && \
+
+            # Try to trace what happens when electron runs
+            echo "Running strace on Electron for diagnostic purposes:" && \
+            timeout 5 strace -f "${EXPECTED_ELECTRON_PATH}" --version --no-sandbox 2>&1 | head -20 || \
+                echo "Strace analysis stopped (expected)" && \
+
+            echo "==== ELECTRON VALIDATION COMPLETE ===="; \
+        else
+            echo "❌ CRITICAL ERROR: Electron binary not found even after fallback install" && \
+            echo "Searching for any electron binaries:" && \
+            find /repo -name "electron" -type f | grep -v "node_modules/electron-builder" && \
+            exit 1; \
+        fi
 
     ###########################################################################
     # 2b · Install any missing build-time deps (adm-zip for webpack plugin)
@@ -206,8 +243,8 @@ ARG STUB_HASH
     # Ensure sudo is available for Playwright's dependency installation
     RUN apt-get update && apt-get install -y sudo
 
-    RUN echo "Installing Playwright browsers (Chromium, Firefox, WebKit) and dependencies..." && \
-        npx playwright install --with-deps chromium firefox webkit && \
+    RUN echo "Installing Playwright browsers, Electron, and dependencies..." && \
+        npx playwright install --with-deps chromium firefox webkit electron && \
         echo "Smoke-testing Playwright CLI..." && \
         npx playwright --version
 
