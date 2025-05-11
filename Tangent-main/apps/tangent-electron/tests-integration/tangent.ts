@@ -96,6 +96,40 @@ const buildDir = path.resolve(__dirname, '../__build')
 // This avoids macOS Gatekeeper issues and makes the test environment consistent
 // between macOS and Linux
 function getElectronExec(): string {
+  console.log('[tangent.ts] Current working directory:', process.cwd());
+  console.log('[tangent.ts] Node version:', process.version);
+  console.log('[tangent.ts] Platform:', process.platform);
+  console.log('[tangent.ts] In Docker:', process.env.PLAYWRIGHT_IN_DOCKER === '1' ? 'Yes' : 'No');
+
+  // Check for saved electron binary path from self-test scripts (specific to Docker)
+  if (process.env.PLAYWRIGHT_IN_DOCKER === '1') {
+    try {
+      if (fs.existsSync('/tmp/electron-binary-path.txt')) {
+        const savedPath = fs.readFileSync('/tmp/electron-binary-path.txt', 'utf8').trim();
+        console.log('[tangent.ts] Found previously detected Electron binary path:', savedPath);
+
+        if (fs.existsSync(savedPath)) {
+          console.log('[tangent.ts] Using Electron binary from previous test');
+
+          // Make sure it's executable
+          try {
+            fs.chmodSync(savedPath, 0o755);
+            console.log('[tangent.ts] Made Electron binary executable');
+            return savedPath;
+          } catch (chmodErr) {
+            console.log('[tangent.ts] Warning: Could not make binary executable');
+            // Continue to next approach
+          }
+        } else {
+          console.log('[tangent.ts] Saved path does not exist, falling back to standard methods');
+        }
+      }
+    } catch (readErr) {
+      console.log('[tangent.ts] Error reading saved Electron path:', readErr.message);
+    }
+  }
+
+  // This is the original implementation - we keep it as the primary path
   try {
     // Import Playwright's electron module to access its executable path
     // This is the most reliable way to get a compatible Electron binary
@@ -122,6 +156,13 @@ function getElectronExec(): string {
 
       if (!(stats.mode & 0o111)) {
         console.warn('[tangent.ts] WARNING: Electron binary is not executable!')
+        // Make it executable if needed
+        try {
+          fs.chmodSync(electronPath, 0o755);
+          console.log('[tangent.ts] Made Electron binary executable');
+        } catch (chmodErr) {
+          console.warn('[tangent.ts] Could not make binary executable:', chmodErr);
+        }
       }
     } catch (statsError) {
       console.error('[tangent.ts] Error checking Electron stats:', statsError)
@@ -137,34 +178,113 @@ function getElectronExec(): string {
       const electronPath = require('electron') as unknown as string
       console.log('[tangent.ts] Using npm-installed Electron:', electronPath)
 
-      // Validate path exists
-      if (!fs.existsSync(electronPath)) {
-        console.error('[tangent.ts] npm Electron path does not exist:', electronPath)
-        throw new Error(`npm Electron path does not exist: ${electronPath}`)
+      // Additional diagnostics for what require('electron') resolved to
+      console.log('[tangent.ts] Type of electronPath:', typeof electronPath);
+      if (typeof electronPath === 'string') {
+        console.log('[tangent.ts] Path length:', electronPath.length);
+      } else {
+        console.log('[tangent.ts] electron is not a string, stringified value:', JSON.stringify(electronPath));
       }
 
-      return electronPath
+      // Validate path exists
+      if (typeof electronPath === 'string' && fs.existsSync(electronPath)) {
+        return electronPath;
+      } else {
+        console.error('[tangent.ts] npm Electron path does not exist or is not a valid path');
+
+        // If it's not a string, it might be an object - try to extract path
+        if (typeof electronPath === 'object' && electronPath !== null) {
+          const extractedPath = (electronPath as any).path || (electronPath as any).execPath;
+          if (extractedPath && typeof extractedPath === 'string' && fs.existsSync(extractedPath)) {
+            console.log('[tangent.ts] Extracted path from electron object:', extractedPath);
+            return extractedPath;
+          }
+        }
+
+        throw new Error(`npm Electron path is not valid: ${electronPath}`);
+      }
     } catch (fallbackError) {
       console.error('[tangent.ts] Fallback to npm electron failed:', fallbackError)
 
-      // Try a final fallback for Docker environment
+      // Enhanced fallback for Docker environment with additional paths
       if (process.env.PLAYWRIGHT_IN_DOCKER === '1') {
         try {
-          // In Docker, search for Electron executable in common locations
+          // Project-specific paths first - absolute paths for the Docker container
           const possiblePaths = [
+            // Standard locations
             '/repo/node_modules/.bin/electron',
             '/repo/node_modules/electron/dist/electron',
-            '/ms-playwright/node_modules/.bin/electron'
-          ]
 
-          console.log('[tangent.ts] Attempting Docker fallbacks for Electron binary...')
-          for (const path of possiblePaths) {
-            if (fs.existsSync(path)) {
-              console.log('[tangent.ts] Found Electron at:', path)
-              return path
+            // pnpm store paths
+            '/repo/node_modules/.pnpm/electron@35.2.1/node_modules/electron/dist/electron',
+
+            // Playwright paths
+            '/ms-playwright/node_modules/.bin/electron',
+
+            // Relative to CWD (process.cwd())
+            path.resolve(process.cwd(), 'node_modules/electron/dist/electron'),
+            path.resolve(process.cwd(), 'node_modules/.bin/electron')
+          ];
+
+          console.log('[tangent.ts] Attempting Docker fallbacks for Electron binary...');
+          for (const candidatePath of possiblePaths) {
+            if (fs.existsSync(candidatePath)) {
+              console.log('[tangent.ts] Found Electron at:', candidatePath);
+
+              // Make it executable
+              try {
+                fs.chmodSync(candidatePath, 0o755);
+                console.log('[tangent.ts] Made Electron binary executable');
+              } catch (chmodErr) {
+                console.warn('[tangent.ts] Could not make binary executable:', chmodErr);
+              }
+
+              return candidatePath;
             } else {
-              console.log('[tangent.ts] Electron not found at:', path)
+              console.log('[tangent.ts] Electron not found at:', candidatePath);
             }
+          }
+
+          // Last resort: use find to locate any electron binary
+          try {
+            const { execSync } = require('child_process');
+            const result = execSync('find /repo -name electron -type f | head -n 5', {
+              encoding: 'utf8',
+              timeout: 10000
+            });
+
+            if (result.trim()) {
+              const files = result.trim().split('\n');
+              console.log('[tangent.ts] Found potential Electron binaries:');
+              files.forEach(file => console.log(`  - ${file}`));
+
+              if (files.length > 0) {
+                const foundPath = files[0];
+                console.log('[tangent.ts] Using first match:', foundPath);
+
+                // Make it executable
+                try {
+                  fs.chmodSync(foundPath, 0o755);
+                  console.log('[tangent.ts] Made Electron binary executable');
+                } catch (chmodErr) {
+                  console.warn('[tangent.ts] Could not make binary executable:', chmodErr);
+                }
+
+                // Save for other tests
+                try {
+                  fs.writeFileSync('/tmp/electron-binary-path.txt', foundPath);
+                  console.log('[tangent.ts] Saved Electron binary path to file');
+                } catch (writeErr) {
+                  console.warn('[tangent.ts] Could not save path to file:', writeErr);
+                }
+
+                return foundPath;
+              }
+            } else {
+              console.log('[tangent.ts] No files found in broader search');
+            }
+          } catch (findErr) {
+            console.error('[tangent.ts] Error during broader search:', findErr);
           }
         } catch (dockerError) {
           console.error('[tangent.ts] Docker fallback failed:', dockerError)
