@@ -82,77 +82,75 @@ ARG STUB_HASH
 
     # Switch back to pwuser for Electron installation and validation
     USER pwuser
-    RUN set -eux &&\
-        echo "🚀 Installing Electron from package.json devDependency..." &&\
-        # Use pnpm first (it's in devDependencies of tangent_electron)
-        echo "Method 1: Using pnpm to install Electron directly..." &&\
-        cd /repo/Tangent-main/apps/tangent-electron &&\
-        pnpm install -D electron@35.2.1 --ignore-scripts=false &&\
 
-        # Now verify the installation
-        echo "==== COMPREHENSIVE ELECTRON VALIDATION ====" &&\
-        EXPECTED_ELECTRON_PATH="/repo/node_modules/electron/dist/electron" &&\
-        echo "Expected Electron path: ${EXPECTED_ELECTRON_PATH}" &&\
-        # If electron is not found at expected path, try direct npm install as fallback
-        if [ ! -f "${EXPECTED_ELECTRON_PATH}" ]; then
-            echo "⚠️ Electron not found at expected path. Using direct npm install..." &&\
-            cd /repo &&\
-            rm -rf /repo/node_modules/electron /repo/node_modules/.bin/electron &&\
-            npm install --no-save electron@35.2.1 &&\
-            echo "Direct npm install completed";\
-        fi &&\
+    # Use a heredoc for the entire Electron installation and validation script
+    # This avoids all the line continuation and shell script syntax issues with Docker
+    RUN bash -euxo pipefail <<'EOS'
+      echo "🚀 Installing Electron via pnpm (devDependency)..."
+      cd /repo/Tangent-main/apps/tangent-electron
+      pnpm install -D electron@35.2.1 --ignore-scripts=false
 
-        # Final validation after potential fallback installation
-        if [ -f "${EXPECTED_ELECTRON_PATH}" ]; then
-            # Show Electron binary file info
-            echo "✅ Electron binary found at ${EXPECTED_ELECTRON_PATH}" &&\
-            ls -la "${EXPECTED_ELECTRON_PATH}" &&\
-            file "${EXPECTED_ELECTRON_PATH}" &&\
+      echo "==== COMPREHENSIVE ELECTRON VALIDATION ===="
+      EXPECTED="/repo/node_modules/electron/dist/electron"
+      echo "Expected Electron path: $EXPECTED"
 
-            # Ensure executable permissions
-            echo "Making Electron binary executable..." &&\
-            chmod +x "${EXPECTED_ELECTRON_PATH}" &&\
+      if [[ ! -f "$EXPECTED" ]]; then
+        echo "⚠️ Electron not found, falling back to npm install..."
+        cd /repo
+        rm -rf node_modules/electron node_modules/.bin/electron
+        npm install --no-save electron@35.2.1
+        echo "Direct npm install completed"
+      fi
 
-            # Check if symlink exists or create it
-            if [ ! -L "/repo/node_modules/.bin/electron" ]; then
-                echo "Creating Electron symlink..." &&\
-                mkdir -p /repo/node_modules/.bin &&\
-                ln -s ../electron/dist/electron /repo/node_modules/.bin/electron;\
-            else
-                echo "Electron symlink already exists";\
-            fi &&\
+      if [[ -f "$EXPECTED" ]]; then
+        # Show Electron binary file info
+        echo "✅ Electron binary found at $EXPECTED"
+        ls -la "$EXPECTED"
+        file "$EXPECTED"
 
-            # Create additional guaranteed path
-            mkdir -p /repo/bin &&\
-            cp "${EXPECTED_ELECTRON_PATH}" /repo/bin/electron &&\
-            chmod +x /repo/bin/electron &&\
-            echo "✅ Created guaranteed binary at /repo/bin/electron" &&\
+        # Ensure executable permissions
+        echo "Making Electron binary executable..."
+        chmod +x "$EXPECTED"
 
-            # Try running Electron to verify it works
-            echo "Testing Electron binary execution:" &&\
-            "${EXPECTED_ELECTRON_PATH}" --version --no-sandbox ||\
-                echo "Note: Electron execution failed in headless env (expected)" &&\
-
-            # Check library dependencies
-            echo "Checking Electron binary dependencies:" &&\
-            (ldd "${EXPECTED_ELECTRON_PATH}" || echo "ldd check failed") &&\
-
-            # Share path with test scripts
-            echo "${EXPECTED_ELECTRON_PATH}" > /tmp/electron-binary-path.txt &&\
-            echo "✅ Saved Electron path to /tmp/electron-binary-path.txt" &&\
-
-            # Try to trace what happens when electron runs
-            echo "Running strace on Electron for diagnostic purposes:" &&\
-            timeout 5 strace -f "${EXPECTED_ELECTRON_PATH}" --version --no-sandbox 2>&1 | head -20 ||\
-                echo "Strace analysis stopped (expected)" &&\
-
-            echo "==== ELECTRON VALIDATION COMPLETE ====";\
+        # Check if symlink exists or create it
+        if [[ ! -L "/repo/node_modules/.bin/electron" ]]; then
+          echo "Creating Electron symlink..."
+          mkdir -p /repo/node_modules/.bin
+          ln -sf ../electron/dist/electron /repo/node_modules/.bin/electron
         else
-            echo "❌ CRITICAL ERROR: Electron binary not found even after fallback install" &&\
-            echo "Searching for any electron binaries:" &&\
-            find /repo -name "electron" -type f | grep -v "node_modules/electron-builder" &&\
-            exit 1;\
+          echo "Electron symlink already exists"
         fi
+
+        # Create additional guaranteed path
+        mkdir -p /repo/bin
+        cp "$EXPECTED" /repo/bin/electron
+        chmod +x /repo/bin/electron
+        echo "✅ Created guaranteed binary at /repo/bin/electron"
+
+        # Try running Electron to verify it works
+        echo "Testing Electron binary execution:"
+        "$EXPECTED" --version --no-sandbox || echo "Execution failed in headless (expected)"
+
+        # Check library dependencies
+        echo "Checking Electron binary dependencies:"
+        ldd "$EXPECTED" || echo "ldd check failed"
+
+        # Share path with test scripts
+        echo "$EXPECTED" > /tmp/electron-binary-path.txt
+        echo "✅ Saved Electron path to /tmp/electron-binary-path.txt"
+
+        # Try to trace what happens when electron runs
+        echo "Running strace on Electron for diagnostic purposes:"
+        timeout 5 strace -f "$EXPECTED" --version --no-sandbox 2>&1 | head -20 || echo "Strace stopped (expected)"
+
+        echo "==== ELECTRON VALIDATION COMPLETE ===="
+      else
+        echo "❌ CRITICAL ERROR: Electron binary not found even after fallback install"
+        echo "Searching for any electron binaries:"
+        find /repo -name "electron" -type f | grep -v "node_modules/electron-builder" || true
+        exit 1
+      fi
+EOS
 
     ###########################################################################
     # 2b · Install any missing build-time deps (adm-zip for webpack plugin)
@@ -270,74 +268,98 @@ ARG STUB_HASH
     # 7 · Comprehensive diagnostics and verification for Electron
     ################################################################################
     # Enhanced, comprehensive verification for Electron installation and dependencies
-    RUN echo "==== ENHANCED ELECTRON VERIFICATION IN DOCKER ====" &&\
-        echo "Checking all potential Electron paths and dependencies..." &&\
-        echo "1. Checking reserved path /repo/bin/electron (our guaranteed binary):" &&\
-        ls -la /repo/bin/electron || echo "Guaranteed path NOT found" &&\
-        if [ -f "/repo/bin/electron" ]; then\
-            chmod +x /repo/bin/electron &&\
-            echo "Running guaranteed binary version check:" &&\
-            (/repo/bin/electron --version --no-sandbox || echo "Binary version check FAILED") &&\
-            echo "Library dependencies:" &&\
-            (ldd /repo/bin/electron || echo "ldd check failed");\
-        fi &&\
-        echo "2. Checking standard installation path:" &&\
-        ls -la /repo/node_modules/electron/dist/electron || echo "Standard path NOT found" &&\
-        if [ -f "/repo/node_modules/electron/dist/electron" ]; then\
-            chmod +x /repo/node_modules/electron/dist/electron &&\
-            echo "Running standard binary version check:" &&\
-            (/repo/node_modules/electron/dist/electron --version --no-sandbox || echo "Binary version check FAILED") &&\
-            echo "Library dependencies:" &&\
-            (ldd /repo/node_modules/electron/dist/electron || echo "ldd check failed");\
-        fi &&\
-        echo "3. Checking symlink in .bin directory:" &&\
-        ls -la /repo/node_modules/.bin/electron || echo "Symlink NOT found" &&\
-        if [ -L "/repo/node_modules/.bin/electron" ]; then\
-            SYMLINK_TARGET=$(readlink -f /repo/node_modules/.bin/electron) &&\
-            echo "Symlink target: $SYMLINK_TARGET" &&\
-            if [ -f "$SYMLINK_TARGET" ]; then\
-                echo "Symlink target exists" &&\
-                chmod +x "$SYMLINK_TARGET" &&\
-                echo "Running symlink target version check:" &&\
-                ($SYMLINK_TARGET --version --no-sandbox || echo "Symlink version check FAILED");\
-            else\
-                echo "Symlink target does not exist";\
-            fi;\
-        fi &&\
-        echo "4. Checking require.resolve('electron') result:" &&\
-        RESOLVE_PATH=$(node -e "try { console.log(require.resolve('electron')); } catch(e) { console.error('ERROR:', e.message); process.exit(1); }") || echo "require.resolve failed" &&\
-        if [ $? -eq 0 ]; then\
-            echo "Resolve path: $RESOLVE_PATH" &&\
-            ELECTRON_DIR=$(dirname "$RESOLVE_PATH") &&\
-            if [[ "$RESOLVE_PATH" == *"cli.js"* ]]; then\
-                echo "Checking for binary relative to cli.js..." &&\
-                POTENTIAL_BINARY="$ELECTRON_DIR/../dist/electron" &&\
-                if [ -f "$POTENTIAL_BINARY" ]; then\
-                    echo "Found binary at $POTENTIAL_BINARY" &&\
-                    chmod +x "$POTENTIAL_BINARY" &&\
-                    echo "Running potential binary version check:" &&\
-                    ($POTENTIAL_BINARY --version --no-sandbox || echo "Potential binary version check FAILED");\
-                fi;\
-            fi;\
-        fi &&\
-        echo "5. Testing Playwright's electron executablePath:" &&\
-        PLAYWRIGHT_ELECTRON=$(node -e "try { console.log(require('@playwright/test')._electron.executablePath()); } catch(e) { console.error('ERROR:', e.message); process.exit(1); }") || echo "Playwright executablePath failed" &&\
-        if [ $? -eq 0 ]; then\
-            echo "Playwright Electron path: $PLAYWRIGHT_ELECTRON" &&\
-            if [ -f "$PLAYWRIGHT_ELECTRON" ]; then\
-                echo "Playwright Electron binary exists" &&\
-                chmod +x "$PLAYWRIGHT_ELECTRON" &&\
-                echo "Running Playwright Electron version check:" &&\
-                ("$PLAYWRIGHT_ELECTRON" --version --no-sandbox || echo "Playwright Electron version check FAILED");\
-            else\
-                echo "Playwright Electron binary does not exist";\
-            fi;\
-        fi &&\
-        echo "6. Checking DISPLAY environment and Xvfb:" &&\
-        echo "Current DISPLAY: $DISPLAY" &&\
-        echo "Testing Xvfb connection:" &&\
-        (xdpyinfo || echo "xdpyinfo failed - display server may not be running") &&\
-        echo "==== ENHANCED ELECTRON VERIFICATION COMPLETE ===="
+    # Use heredoc for enhanced Electron validation to avoid syntax issues
+    RUN bash -euxo pipefail <<'EOS'
+      echo "==== ENHANCED ELECTRON VERIFICATION IN DOCKER ===="
+      echo "Checking all potential Electron paths and dependencies..."
+
+      echo "1. Checking reserved path /repo/bin/electron (our guaranteed binary):"
+      ls -la /repo/bin/electron || echo "Guaranteed path NOT found"
+      if [[ -f "/repo/bin/electron" ]]; then
+          chmod +x /repo/bin/electron
+          echo "Running guaranteed binary version check:"
+          /repo/bin/electron --version --no-sandbox || echo "Binary version check FAILED"
+          echo "Library dependencies:"
+          ldd /repo/bin/electron || echo "ldd check failed"
+      fi
+
+      echo "2. Checking standard installation path:"
+      ls -la /repo/node_modules/electron/dist/electron || echo "Standard path NOT found"
+      if [[ -f "/repo/node_modules/electron/dist/electron" ]]; then
+          chmod +x /repo/node_modules/electron/dist/electron
+          echo "Running standard binary version check:"
+          /repo/node_modules/electron/dist/electron --version --no-sandbox || echo "Binary version check FAILED"
+          echo "Library dependencies:"
+          ldd /repo/node_modules/electron/dist/electron || echo "ldd check failed"
+      fi
+
+      echo "3. Checking symlink in .bin directory:"
+      ls -la /repo/node_modules/.bin/electron || echo "Symlink NOT found"
+      if [[ -L "/repo/node_modules/.bin/electron" ]]; then
+          SYMLINK_TARGET=$(readlink -f /repo/node_modules/.bin/electron)
+          echo "Symlink target: $SYMLINK_TARGET"
+          if [[ -f "$SYMLINK_TARGET" ]]; then
+              echo "Symlink target exists"
+              chmod +x "$SYMLINK_TARGET"
+              echo "Running symlink target version check:"
+              "$SYMLINK_TARGET" --version --no-sandbox || echo "Symlink version check FAILED"
+          else
+              echo "Symlink target does not exist"
+          fi
+      fi
+
+      echo "4. Checking require.resolve('electron') result:"
+      RESOLVE_PATH=$(node -e "try { console.log(require.resolve('electron')); } catch(e) { console.error('ERROR:', e.message); process.exit(1); }") || echo "require.resolve failed"
+      if [[ $? -eq 0 ]]; then
+          echo "Resolve path: $RESOLVE_PATH"
+          ELECTRON_DIR=$(dirname "$RESOLVE_PATH")
+          if [[ "$RESOLVE_PATH" == *"cli.js"* ]]; then
+              echo "Checking for binary relative to cli.js..."
+              POTENTIAL_BINARY="$ELECTRON_DIR/../dist/electron"
+              if [[ -f "$POTENTIAL_BINARY" ]]; then
+                  echo "Found binary at $POTENTIAL_BINARY"
+                  chmod +x "$POTENTIAL_BINARY"
+                  echo "Running potential binary version check:"
+                  "$POTENTIAL_BINARY" --version --no-sandbox || echo "Potential binary version check FAILED"
+              fi
+          fi
+      fi
+
+      echo "5. Testing Playwright's electron executablePath:"
+      # Note: This will likely fail since _electron.executablePath() doesn't exist in Playwright 1.52
+      # Include it but handle the failure gracefully
+      PLAYWRIGHT_ELECTRON=$(node -e "try {
+        const pw = require('@playwright/test');
+        if (typeof pw._electron.executablePath === 'function') {
+          console.log(pw._electron.executablePath());
+        } else {
+          console.error('ERROR: _electron.executablePath() is not a function in this Playwright version');
+          process.exit(1);
+        }
+      } catch(e) {
+        console.error('ERROR:', e.message);
+        process.exit(1);
+      }") || echo "Playwright executablePath is not available"
+
+      if [[ $? -eq 0 && -n "$PLAYWRIGHT_ELECTRON" ]]; then
+          echo "Playwright Electron path: $PLAYWRIGHT_ELECTRON"
+          if [[ -f "$PLAYWRIGHT_ELECTRON" ]]; then
+              echo "Playwright Electron binary exists"
+              chmod +x "$PLAYWRIGHT_ELECTRON"
+              echo "Running Playwright Electron version check:"
+              "$PLAYWRIGHT_ELECTRON" --version --no-sandbox || echo "Playwright Electron version check FAILED"
+          else
+              echo "Playwright Electron binary does not exist"
+          fi
+      fi
+
+      echo "6. Checking DISPLAY environment and Xvfb:"
+      echo "Current DISPLAY: $DISPLAY"
+      echo "Testing Xvfb connection:"
+      xdpyinfo || echo "xdpyinfo failed - display server may not be running"
+
+      echo "==== ENHANCED ELECTRON VERIFICATION COMPLETE ===="
+EOS
 
     # Creates /repo/debug.sh for quick environment checks inside the container.
     RUN cat <<'EOS' > /repo/debug.sh
@@ -458,44 +480,72 @@ EOS
     ################################################################################
     # 8 · ENTRYPOINT — run the five Codex specs under xvfb
     ################################################################################
-    # Enhanced command with robustness features
-    CMD ["/bin/bash", "-c", "echo '===== STARTING TEST EXECUTION =====' &&\
-        # Run diagnostic script for baseline info
-        /repo/debug.sh &&\
-        # Ensure clean environment (kill any stray processes)
-        echo 'Cleaning up any previously running Electron processes...' &&\
-        killall -9 electron || echo 'No Electron processes to kill' &&\
-        killall -9 Xvfb || echo 'No Xvfb processes to kill' &&\
-        # Make sure key directories and files exist with proper permissions
-        echo 'Ensuring binary permissions...' &&\
-        chmod +x /repo/bin/electron &&\
-        chmod +x /repo/node_modules/electron/dist/electron || echo 'Standard path not found' &&\
-        # Start Xvfb explicitly and verify it's running before tests
-        echo 'Starting Xvfb display server...' &&\
-        Xvfb :99 -screen 0 1280x720x24 -ac &\
-        # Wait for Xvfb to initialize fully
-        echo 'Waiting for Xvfb to initialize...' &&\
-        sleep 2 &&\
-        # Verify display server is running
-        echo 'Verifying Xvfb is running:' &&\
-        (DISPLAY=:99 xdpyinfo >/dev/null 2>&1 && echo 'Xvfb running properly' || echo 'WARNING: Xvfb may not be running correctly') &&\
-        # Run the tests with enhanced environment variables
-        cd /repo/Tangent-main/apps/tangent-electron &&\
-        echo 'Running Playwright tests with enhanced environment...' &&\
-        DISPLAY=:99\
-        PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1\
-        ELECTRON_DISABLE_SANDBOX=1\
-        ELECTRON_ENABLE_LOGGING=1\
-        DUMP_HANDLES=1\
-        NODE_OPTIONS='--max-old-space-size=4096'\
-        DEBUG=pw:browser*,pw:electron*,electron:*,workspace:*,tangent:*,codex:*\
-        pnpm dlx playwright@1.52.0 test\
-        \"tests-integration/codex_*.test.ts\"\
-        --reporter=list,html\
-        --timeout=120000\
-        --workers=1\
-        --retries=1\
-        --debug"]
+    # Enhanced command with robustness features using a heredoc
+    CMD ["/bin/bash", "-c", "cat > /tmp/run-tests.sh << 'TESTSCRIPT' && chmod +x /tmp/run-tests.sh && /tmp/run-tests.sh
+#!/bin/bash
+set -e
+
+echo '===== STARTING TEST EXECUTION ====='
+
+# Run diagnostic script for baseline info
+/repo/debug.sh
+
+# Ensure clean environment (kill any stray processes)
+echo 'Cleaning up any previously running Electron processes...'
+killall -9 electron 2>/dev/null || echo 'No Electron processes to kill'
+killall -9 Xvfb 2>/dev/null || echo 'No Xvfb processes to kill'
+
+# Make sure key directories and files exist with proper permissions
+echo 'Ensuring binary permissions...'
+if [[ -f '/repo/bin/electron' ]]; then
+  chmod +x /repo/bin/electron
+  echo 'Made guaranteed binary executable'
+fi
+
+if [[ -f '/repo/node_modules/electron/dist/electron' ]]; then
+  chmod +x /repo/node_modules/electron/dist/electron
+  echo 'Made standard binary executable'
+else
+  echo 'Standard path not found'
+fi
+
+# Start Xvfb explicitly and verify it's running before tests
+echo 'Starting Xvfb display server...'
+Xvfb :99 -screen 0 1280x720x24 -ac &
+XVFB_PID=$!
+echo \"Started Xvfb process with PID: $XVFB_PID\"
+
+# Wait for Xvfb to initialize fully
+echo 'Waiting for Xvfb to initialize...'
+sleep 2
+
+# Verify display server is running
+echo 'Verifying Xvfb is running:'
+if DISPLAY=:99 xdpyinfo >/dev/null 2>&1; then
+  echo 'Xvfb running properly'
+else
+  echo 'WARNING: Xvfb may not be running correctly'
+fi
+
+# Run the tests with enhanced environment variables
+cd /repo/Tangent-main/apps/tangent-electron
+echo 'Running Playwright tests with enhanced environment...'
+
+DISPLAY=:99 \\
+PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \\
+ELECTRON_DISABLE_SANDBOX=1 \\
+ELECTRON_ENABLE_LOGGING=1 \\
+DUMP_HANDLES=1 \\
+NODE_OPTIONS='--max-old-space-size=4096' \\
+DEBUG=pw:browser*,pw:electron*,electron:*,workspace:*,tangent:*,codex:* \\
+pnpm dlx playwright@1.52.0 test \\
+'tests-integration/codex_*.test.ts' \\
+--reporter=list,html \\
+--timeout=120000 \\
+--workers=1 \\
+--retries=1 \\
+--debug
+TESTSCRIPT"]
 # Optional cache-buster so this layer rebuilds whenever stub_main.js or the
 # repository HEAD changes.  Supply with
 #   docker build --build-arg STUB_HASH=$(git rev-parse HEAD) …
