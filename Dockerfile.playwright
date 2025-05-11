@@ -16,65 +16,52 @@ SHELL ["/bin/bash", "-c"]
 ################################################################################
 USER root
 
-# Verify Node.js version and ensure Node 20 is installed (pinned version for Electron 35 compatibility)
-RUN set -euo pipefail &&\
-    node --version &&\
-    # Remove Node 22 that Playwright image ships in /usr/local
+# Step 1: Initial Checks & Cleanup of Pre-existing Node (if any)
+RUN set -euxo pipefail && \
+    echo "Initial Node version: $(node --version || echo 'Node not initially found')" && \
     if [ -x /usr/local/bin/node ]; then \
-        echo "Removing pre-installed Node $(/usr/local/bin/node -v) from /usr/local..." &&\
-        rm -f /usr/local/bin/node /usr/local/bin/npm /usr/local/bin/npx &&\
-        rm -rf /usr/local/lib/node_modules || true        # keeps image small; \
-    fi &&\
-    # Install Node 20 explicitly and remove any existing Node.js installations
-    apt-get remove -y nodejs npm || echo "No existing Node.js to remove" &&\
-    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - &&\
-    apt-get update -qq &&\
+        echo "Removing pre-installed Node $(/usr/local/bin/node -v) from /usr/local..." && \
+        rm -f /usr/local/bin/node /usr/local/bin/npm /usr/local/bin/npx && \
+        rm -rf /usr/local/lib/node_modules || true; \
+    fi && \
+    apt-get remove -y nodejs npm || echo "No existing Node.js apt package to remove"
+
+# Step 2: Install Node.js 20
+RUN set -euxo pipefail && \
+    echo "Setting up NodeSource for Node 20..." && \
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get update -qq && \
+    echo "Installing Node.js 20 and essential dependencies..." && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --allow-downgrades \
-        # Node.js 20 specifically (do not allow apt-get to upgrade)
         nodejs=20.* \
-        # Basic tools
-        ca-certificates \
-        curl \
-        wget \
-        gnupg \
-        unzip \
-        tar \
-        gzip \
-        git \
-        sudo \
-        # System diagnostics
-        file \
-        strace \
-        lsof \
-        # Basic X11 libraries
+        ca-certificates curl wget gnupg unzip tar gzip git sudo file strace lsof \
         libx11-6 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 libxfixes3 \
         libxext6 libxi6 libxtst6 libxcursor1 \
-        # GPU and rendering
         libdrm2 libgbm1 libegl1 libgl1 \
-        # Audio
         libasound2 libpulse0 \
-        # Security and encryption
         libnss3 libnspr4 \
-        # GTK and desktop integration
         libgtk-3-0 libcups2 libxcb-shm0 libatk1.0-0 libatk-bridge2.0-0 \
-        # Display server
         xvfb dbus-x11 \
-        libgconf-2-4 libnotify4 libxss1 &&\
-    rm -rf /var/lib/apt/lists/* &&\
-    # Ensure corepack is enabled for pnpm
-    corepack enable &&\
-    # Verify Node and npm versions after installation - CRITICAL CHECK
-    NODE_VER=$(node --version) &&\
-    echo "Node: $NODE_VER, npm: $(npm --version), pnpm: $(pnpm --version)" &&\
-    if [[ "$NODE_VER" != v20.* ]]; then \
-        echo "❌ ERROR: Node.js 20.x required for Electron 35 compatibility, but got $NODE_VER" && \
+        libgconf-2-4 libnotify4 libxss1 && \
+    rm -rf /var/lib/apt/lists/*
+
+# Step 3: Verify Node 20, Enable Corepack, Setup Symlinks
+RUN set -euxo pipefail && \
+    echo "Enabling corepack for pnpm..." && \
+    corepack enable && \
+    NODE_VER_CHECK=$(node --version) && \
+    echo "Node version after install: $NODE_VER_CHECK" && \
+    echo "npm version: $(npm --version)" && \
+    echo "pnpm version: $(pnpm --version)" && \
+    if [[ "$NODE_VER_CHECK" != v20.* ]]; then \
+        echo "❌ ERROR: Node.js 20.x was expected, but got $NODE_VER_CHECK" && \
         exit 1; \
-    fi &&\
-    # Create symlink to ensure Node 20 is used even if /usr/local/bin is on PATH
-    ln -sf /usr/bin/node /usr/local/bin/node &&\
-    ln -sf /usr/bin/npm /usr/local/bin/npm &&\
-    ln -sf /usr/bin/npx /usr/local/bin/npx &&\
-    echo "✅ System dependencies and Node.js 20 installed successfully"
+    fi && \
+    echo "Ensuring /usr/local/bin points to correct Node 20 binaries..." && \
+    ln -sf /usr/bin/node /usr/local/bin/node && \
+    ln -sf /usr/bin/npm /usr/local/bin/npm && \
+    ln -sf /usr/bin/npx /usr/local/bin/npx && \
+    echo "✅ System dependencies and Node.js 20 should be correctly installed and primary."
 
 # add Playwright's node-modules to PATH so `playwright` is always available
 ENV PATH=/ms-playwright/node_modules/.bin:$PATH
