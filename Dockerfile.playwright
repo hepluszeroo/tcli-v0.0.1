@@ -470,6 +470,19 @@ TESTSCRIPT
 # Make sure the script is executable
 RUN chmod +x /repo/scripts/docker-run-tests.sh
 
+# Add verification script for Electron binary
+COPY --chown=pwuser:pwuser verify_electron.sh /repo/verify_electron.sh
+RUN chmod +x /repo/verify_electron.sh
+
+# Basic verification command to run directly in CI
+RUN set -x && \
+    echo "Running basic Electron binary verification..." && \
+    file /repo/bin/electron && \
+    ls -la /repo/bin/electron && \
+    echo "Target of symlink: $(readlink -f /repo/bin/electron)" && \
+    echo "Node version: $(node --version)" && \
+    echo "Verification complete."
+
 # Use the script as the entry point
 CMD ["/repo/scripts/docker-run-tests.sh"]
 

@@ -9,12 +9,16 @@ cd /repo/Tangent-main/apps/tangent-electron
 echo "Node  : $(node -v)"
 echo "PW    : $(pnpm dlx playwright@1.52.0 --version)"
 
-# 3. List tests (fail fast if none)
+# 3. Run electron binary verification
+echo '=== Running Electron binary verification ==='
+/repo/verify_electron.sh
+
+# 4. List tests (fail fast if none)
 xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' \
   pnpm exec playwright test \
     --config=playwright.config.ts --project Tests --grep Codex --list
 
-# 4. Run the suite
+# 5. Run the suite
 DEBUG=pw:api,pw:test,codex,main,mock-codex \
 xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' \
   pnpm exec playwright test \
