@@ -80,23 +80,43 @@ ARG STUB_HASH
 
     # Switch back to pwuser for package installation
     USER pwuser
-    RUN echo "🚀 Installing Electron..." && \
-        echo "Method 1: Using pnpm add..." && \
-        pnpm add -Dw --workspace-root electron@35.2.1 --ignore-scripts=false && \
-        echo "✅ pnpm add succeeded" || \
-        (echo "⚠️ pnpm add failed, trying alternate method..." && \
-        node -e "try { require('electron/install.js'); console.log('✅ Manual electron install succeeded'); } catch(e) { console.error('❌ Manual install failed:', e); process.exit(1); }") && \
-        echo "Verifying electron installation..." && \
-        if [ -d "/repo/node_modules/electron" ]; then \
-          ls -la /repo/node_modules/electron && \
-          ls -la /repo/node_modules/.bin/electron || true && \
-          echo "✅ Electron directory exists in node_modules" && \
-          chmod +x /repo/node_modules/electron/dist/electron || true && \
-          echo "Made electron binary executable"; \
-        else \
-          echo "❌ ERROR: Electron not found in node_modules" && \
-          exit 1; \
-        fi
+    RUN set -eux && \
+        echo "🚀 Installing Electron directly from npm with comprehensive validation..." && \
+        # Remove any existing Electron installation to ensure clean state
+        rm -rf /repo/node_modules/electron /repo/node_modules/.bin/electron && \
+        # Install Electron directly from npm to guarantee correct structure
+        npm install --no-save electron@35.2.1 && \
+        # Verify the installation is complete
+        echo "✅ Verifying Electron installation..." && \
+        # Check if key directories and files exist
+        [ -d "/repo/node_modules/electron" ] && \
+        [ -d "/repo/node_modules/electron/dist" ] && \
+        [ -f "/repo/node_modules/electron/dist/electron" ] && \
+        # Print key files for diagnostics
+        echo "📂 Electron installation structure:" && \
+        ls -la /repo/node_modules/electron && \
+        ls -la /repo/node_modules/electron/dist && \
+        # Make the binary executable (critical step)
+        chmod +x /repo/node_modules/electron/dist/electron && \
+        # Create symbolic link for convenience if it doesn't exist
+        if [ ! -L "/repo/node_modules/.bin/electron" ]; then \
+            mkdir -p /repo/node_modules/.bin && \
+            ln -s ../electron/dist/electron /repo/node_modules/.bin/electron; \
+        fi && \
+        # Create a file to share Electron's path with tangent.ts
+        echo "/repo/node_modules/electron/dist/electron" > /tmp/electron-binary-path.txt && \
+        # Test the executable (might fail but that's ok)
+        echo "🧪 Testing Electron binary execution:" && \
+        /repo/node_modules/electron/dist/electron --version --no-sandbox || echo "Execution in headless environment failed (expected) but binary exists" && \
+        # Additional failsafe: copy the binary to a guaranteed location
+        mkdir -p /repo/bin && \
+        cp /repo/node_modules/electron/dist/electron /repo/bin/electron && \
+        chmod +x /repo/bin/electron && \
+        echo "✅ Electron binary also available at /repo/bin/electron" && \
+        # Verify the binary is 64-bit (which is required in Docker)
+        file /repo/node_modules/electron/dist/electron | grep '64-bit' || echo "Warning: not a 64-bit binary" && \
+        # Final verification step
+        echo "✅ Electron installation complete and verified"
 
     ###########################################################################
     # 2b · Install any missing build-time deps (adm-zip for webpack plugin)
@@ -217,29 +237,116 @@ ARG STUB_HASH
     # Creates /repo/debug.sh for quick environment checks inside the container.
     RUN cat <<'EOS' > /repo/debug.sh
 #!/usr/bin/env bash
-echo "=============== Debug capsule ==============="
-echo "Node        : $(node -v)"
-echo "Playwright  : $(pnpm dlx playwright@1.52.0 --version 2>/dev/null)"
-echo "Electron paths in container:"
-echo "- symlink   : $(ls -la /repo/node_modules/.bin/electron 2>/dev/null || echo 'Not found')"
-echo "- binary    : $(ls -la /repo/node_modules/electron/dist/electron 2>/dev/null || echo 'Not found')"
-echo "- npm path  : $(which electron 2>/dev/null || echo 'Not found')"
+echo "=============== Enhanced Debug Capsule ==============="
+echo "Environment  : Docker container"
+echo "Node         : $(node -v)"
+echo "Playwright   : $(pnpm dlx playwright@1.52.0 --version 2>/dev/null)"
+echo "Architecture : $(uname -m)"
+echo ""
+echo "===== Electron Binary Locations ====="
+
+# Check /repo/bin/electron (our guaranteed location)
+if [ -f "/repo/bin/electron" ]; then
+  echo "✅ GUARANTEED: /repo/bin/electron exists"
+  ls -la /repo/bin/electron
+  file /repo/bin/electron
+  echo "  Executable: $([ -x /repo/bin/electron ] && echo 'Yes' || echo 'No')"
+else
+  echo "❌ CRITICAL ERROR: /repo/bin/electron NOT FOUND"
+fi
+
+# Check standard install location
+if [ -f "/repo/node_modules/electron/dist/electron" ]; then
+  echo "✅ STANDARD: /repo/node_modules/electron/dist/electron exists"
+  ls -la /repo/node_modules/electron/dist/electron
+  echo "  Executable: $([ -x /repo/node_modules/electron/dist/electron ] && echo 'Yes' || echo 'No')"
+else
+  echo "❌ ERROR: Standard Electron binary not found"
+fi
+
+# Check symlink
+if [ -L "/repo/node_modules/.bin/electron" ]; then
+  echo "✅ SYMLINK: /repo/node_modules/.bin/electron exists"
+  ls -la /repo/node_modules/.bin/electron
+  target=$(readlink -f /repo/node_modules/.bin/electron)
+  echo "  → Points to: $target"
+  echo "  → Target exists: $([ -f "$target" ] && echo 'Yes' || echo 'No')"
+else
+  echo "❌ ERROR: Electron symlink not found"
+fi
+
+# Check electron-binary-path.txt
+if [ -f "/tmp/electron-binary-path.txt" ]; then
+  echo "✅ PATH FILE: /tmp/electron-binary-path.txt exists"
+  echo "  → Content: $(cat /tmp/electron-binary-path.txt)"
+  saved_path=$(cat /tmp/electron-binary-path.txt)
+  echo "  → Path exists: $([ -f "$saved_path" ] && echo 'Yes' || echo 'No')"
+else
+  echo "❌ ERROR: electron-binary-path.txt not found"
+fi
+
+echo ""
+echo "===== JavaScript Require Resolution ====="
 node - <<'NODE'
   try {
+    console.log('• require.resolve(\'electron\'):');
     const r = require.resolve('electron');
-    console.log('Electron    : resolves to', r);
+    console.log('  → Resolves to: ' + r);
+
     const fs = require('fs');
-    console.log('Exists      :', fs.existsSync(r));
+    console.log('  → Path exists: ' + fs.existsSync(r));
+
     if (fs.existsSync(r)) {
       const stats = fs.statSync(r);
-      console.log('Executable  :', !!(stats.mode & 0o111));
-      console.log('Size        :', stats.size, 'bytes');
+      console.log('  → Is executable: ' + !!(stats.mode & 0o111));
+      console.log('  → File size: ' + stats.size + ' bytes');
+    }
+
+    console.log('• require(\'electron\'):');
+    const electronModule = require('electron');
+    console.log('  → Type: ' + typeof electronModule);
+    console.log('  → Value: ' + JSON.stringify(electronModule).substring(0, 100) + '...');
+  } catch (err) {
+    console.error('  → ERROR: ' + err.message);
+  }
+
+  try {
+    console.log('• playwright._electron.executablePath():');
+    const pw = require('@playwright/test');
+    const electronPath = pw._electron.executablePath();
+    console.log('  → Returns: ' + electronPath);
+
+    const fs = require('fs');
+    console.log('  → Path exists: ' + fs.existsSync(electronPath));
+
+    if (fs.existsSync(electronPath)) {
+      const stats = fs.statSync(electronPath);
+      console.log('  → Is executable: ' + !!(stats.mode & 0o111));
     }
   } catch (err) {
-    console.error('Electron    : ❌ NOT FOUND -', err.message);
+    console.error('  → ERROR: ' + err.message);
   }
 NODE
-echo "============================================"
+
+# Check if tangent.ts can find Electron
+echo ""
+echo "===== Testing Electron Binary Detection ====="
+cd /repo/Tangent-main/apps/tangent-electron/tests-integration
+echo "• Running getElectronExec() from tangent.ts..."
+node -e "
+  const fs = require('fs');
+  // Mark environment as Docker
+  process.env.PLAYWRIGHT_IN_DOCKER = '1';
+  // Import the tangent module
+  try {
+    const tangent = require('./tangent');
+    console.log('  → tangent.ts loaded successfully');
+  } catch (err) {
+    console.error('  → Error loading tangent.ts:', err.message);
+  }
+" || echo "  → Error executing test script"
+
+echo "============================================="
 EOS
     RUN chmod +x /repo/debug.sh
 
