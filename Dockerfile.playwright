@@ -99,9 +99,19 @@ RUN set -euxo pipefail &&\
     echo "🚀 Installing ALL project dependencies via pnpm (including Electron)..." &&\
     # Clean pnpm store to avoid cache issues
     pnpm store prune &&\
-    # Install all dependencies with maximum verbosity
+    # Verify package.json contains electron dependency
+    cd /repo &&\
+    echo "Checking for electron in package.json files:" &&\
+    grep -r "\"electron\"" --include="package.json" . || echo "WARNING: electron not found in package.json!" &&\
+    # Verify pnpm version (v10+ blocks scripts by default)
+    echo "Using pnpm version: $(pnpm --version)" &&\
+    # Install all dependencies with maximum verbosity, without ignored scripts!
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pnpm -ddd install -w --frozen-lockfile --prod=false --ignore-scripts=false &&\
-    echo "✅ Main pnpm install complete."
+    echo "✅ Main pnpm install complete. Now checking electron installation:" &&\
+    # Verify electron package was installed
+    ls -la /repo/node_modules/electron || echo "WARNING: electron directory not created by pnpm install!" &&\
+    # Check for install.js in electron directory
+    ls -la /repo/node_modules/electron/install.js || echo "WARNING: electron/install.js not found!"
 
 ################################################################################
 # 2b · Manually run Electron's post-install script (for pnpm v10+ compatibility)
@@ -111,10 +121,37 @@ RUN set -euxo pipefail &&\
 RUN set -euxo pipefail &&\
     echo "🔄 Manually executing Electron's post-install script..." &&\
     echo "This is necessary because pnpm v10+ blocks scripts by default" &&\
-    # Option 1: Run the install.js script directly
-    node -e "require('electron/install')" &&\
-    # Option 2: Alternative approach using pnpm rebuild (commented out as backup)
-    # pnpm rebuild electron &&\
+    # Add diagnostic information before attempting to run electron/install
+    echo "Current working directory (for node -e): $(pwd)" &&\
+    echo "Listing /repo directory:" &&\
+    ls -la /repo &&\
+    echo "Listing node_modules directory:" &&\
+    ls -la /repo/node_modules | grep electron &&\
+    echo "Listing contents of /repo/node_modules/electron/ (if it exists):" &&\
+    ls -la /repo/node_modules/electron || echo "/repo/node_modules/electron NOT FOUND" &&\
+    echo "Checking for /repo/node_modules/electron/install.js:" &&\
+    ls -la /repo/node_modules/electron/install.js || echo "/repo/node_modules/electron/install.js NOT FOUND" &&\
+    echo "Node's perspective on resolving 'electron' (from /repo):" &&\
+    (cd /repo && node -p "try { console.log(require.resolve('electron')); } catch(e) { console.error('Error:', e.code, e.message); }") &&\
+    echo "Trying to resolve 'electron/install' from /repo:" &&\
+    (cd /repo && node -p "try { console.log(require.resolve('electron/install')); } catch(e) { console.error('Error:', e.code, e.message); }") &&\
+    echo "Searching for any install.js files:" &&\
+    find /repo -name "install.js" | grep -i electron &&\
+    # Option 1: Run the install.js script directly with error handling
+    node -e "try {
+        console.log('Attempting require(\\'electron/install\\') from CWD:', process.cwd());
+        require('electron/install');
+        console.log('electron/install script required successfully.');
+    } catch(e) {
+        console.error('ERROR during require(\\'electron/install\\'):', e);
+        console.error('Module resolution paths:', module.paths);
+        process.exit(1);
+    }" || echo "First attempt failed, trying with explicit path" &&\
+    # Fallback: Try to find and run install.js directly if it exists
+    (find /repo -name "install.js" | grep -i electron | xargs -I{} node {} || echo "Could not find or run install.js directly") &&\
+    # Option 2: Alternative approach using pnpm rebuild
+    echo "Attempting pnpm rebuild electron as fallback..." &&\
+    (cd /repo && pnpm rebuild electron) &&\
     echo "✅ Manual execution of Electron's post-install script complete."
 
 ################################################################################
