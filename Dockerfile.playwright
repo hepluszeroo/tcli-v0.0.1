@@ -105,8 +105,8 @@ RUN set -euxo pipefail &&\
     grep -r "\"electron\"" --include="package.json" . || echo "WARNING: electron not found in package.json!" &&\
     # Verify pnpm version (v10+ blocks scripts by default)
     echo "Using pnpm version: $(pnpm --version)" &&\
-    # Install all dependencies with maximum verbosity, without ignored scripts!
-    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pnpm -ddd install -w --frozen-lockfile --prod=false --ignore-scripts=false &&\
+    # Install all workspaces' dependencies with maximum verbosity, without ignored scripts!
+    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pnpm -ddd install -r --frozen-lockfile --prod=false --ignore-scripts=false &&\
     echo "✅ Main pnpm install complete. Now checking electron installation:" &&\
     # Verify electron package was installed
     ls -la /repo/node_modules/electron || echo "WARNING: electron directory not created by pnpm install!" &&\
@@ -116,31 +116,14 @@ RUN set -euxo pipefail &&\
 ################################################################################
 # 2b · Manually run Electron's post-install script (for pnpm v10+ compatibility)
 ################################################################################
-# Execute Electron's install.js script directly to download the binary
+# Execute Electron's post-install script directly to download the binary
 # This is needed because pnpm v10+ blocks scripts by default even with --ignore-scripts=false
 RUN echo "🔄 Manually executing Electron's post-install script..." && \
     echo "This is necessary because pnpm v10+ blocks scripts by default" && \
-    echo "Current working directory: $(pwd)" && \
-    echo "===== DIAGNOSTICS =====" && \
-    echo "1. Checking Electron package directory:" && \
-    ls -la /repo/node_modules/electron || echo "Electron directory NOT FOUND" && \
-    echo "2. Checking for install.js file:" && \
-    ls -la /repo/node_modules/electron/install.js || echo "install.js NOT FOUND" && \
-    echo "3. Node.js module resolution for electron:" && \
-    cd /repo && node -p "try { console.log(require.resolve('electron')); } catch(e) { console.error('Error:', e.code, e.message); }" && \
-    echo "4. Node.js module resolution for electron/install:" && \
-    node -p "try { console.log(require.resolve('electron/install')); } catch(e) { console.error('Error:', e.code, e.message); }" && \
-    echo "5. Searching for any install.js files:" && \
-    find /repo -name "install.js" | grep -i electron || echo "No install.js files found" && \
-    echo "===== ATTEMPTING TO RUN ELECTRON INSTALL SCRIPT =====" && \
-    echo "Approach 1: Running node -e with proper JavaScript" && \
-    node -e "console.log('Current working directory:', process.cwd()); try { require('electron/install'); console.log('✅ electron/install script required successfully.'); } catch(e) { console.error('❌ ERROR during require:', e); process.exit(1); }" || \
-    echo "First approach failed, trying alternatives..." && \
-    echo "Approach 2: Trying to find and run install.js directly" && \
-    find /repo -name "install.js" | grep -i electron | xargs -I{} node {} || echo "Could not find or run install.js directly" && \
-    echo "Approach 3: Using pnpm rebuild for electron" && \
-    cd /repo && pnpm rebuild electron && \
-    echo "✅ Manual execution of Electron's post-install script complete."
+    cd /repo && \
+    echo "Running pnpm rebuild electron to ensure the binary is downloaded:" && \
+    pnpm rebuild electron && \
+    echo "✅ Electron post-install script executed via pnpm rebuild"
 
 ################################################################################
 # 3 · Detailed Electron verification
