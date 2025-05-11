@@ -33,6 +33,8 @@ export async function loadSettings() {
 	if (app) {
 		try {
 			const settingsPath = getSettingsPath()
+			// Add diagnostic logging for the smoke test to see the actual path
+			console.log('[SETTINGS] loading from', settingsPath)
 			log.info('Loading settings from: ', settingsPath)
 			const text = await fs.promises.readFile(settingsPath, 'utf8')
 			const data = JSON.parse(text)

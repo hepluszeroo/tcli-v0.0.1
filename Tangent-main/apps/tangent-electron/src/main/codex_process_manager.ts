@@ -495,7 +495,10 @@ export default class CodexProcessManager {
 
       try {
         this.child = spawn(cmd, args, spawnOpts);
-        
+
+        // Add diagnostic for smoke test to detect when Codex is spawned
+        console.log('[CPM_SMOKE_DIAG] Spawned mock, pid=', this.child?.pid);
+
         if (process.env.DEBUG?.includes('codex')) {
           console.log('[codex_process_manager] Child process spawned, PID:', this.child.pid);
         }
