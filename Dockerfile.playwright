@@ -16,17 +16,30 @@ ARG STUB_HASH
     ################################################################################
     USER root
 
-    # downgrade Node, add minimal X/Audio libs for headless Electron
+    # downgrade Node, add X/Audio libs for headless Electron with comprehensive dependencies
     RUN set -euo pipefail && \
         curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
         apt-get update -qq && \
         DEBIAN_FRONTEND=noninteractive apt-get install -y --allow-downgrades \
             nodejs \
+            # Basic X11 libraries
             libx11-6 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 libxfixes3 \
-            libdrm2 libgbm1 libasound2 libnss3 libgtk-3-0 libcups2 libxcb-shm0 \
-            xvfb dbus-x11 && \
+            libxext6 libxi6 libxtst6 libxcursor1 \
+            # GPU and rendering
+            libdrm2 libgbm1 libegl1 libgl1 \
+            # Audio
+            libasound2 libpulse0 libsndio7.0 \
+            # Security and encryption
+            libnss3 libnspr4 \
+            # GTK and desktop integration
+            libgtk-3-0 libcups2 libxcb-shm0 libatk1.0-0 libatk-bridge2.0-0 \
+            # Display server
+            xvfb dbus-x11 \
+            # Additional dependencies for Electron
+            libgconf-2-4 libnotify4 libxtst6 xauth xvfb && \
         rm -rf /var/lib/apt/lists/* && \
-        corepack enable
+        corepack enable && \
+        echo "Comprehensive Electron dependencies installed successfully"
 
     # add Playwright's node-modules to PATH so `playwright` is always available
     ENV PATH=/ms-playwright/node_modules/.bin:$PATH
@@ -182,20 +195,48 @@ ARG STUB_HASH
     USER pwuser
 
     ################################################################################
-    # 7 · Tiny debug helper (using multiple echo statements to avoid heredoc issues)
+    # 7 · Comprehensive diagnostics and verification for Electron
     ################################################################################
+    # Verify Electron installation and accessibility
+    RUN echo "==== Verifying Electron Installation in Docker ====" && \
+        echo "Looking for Electron installed by project pnpm install:" && \
+        ls -la /repo/node_modules/.bin/electron || echo "Electron symlink NOT in /repo/node_modules/.bin/" && \
+        ls -la /repo/node_modules/electron/dist/electron || echo "Electron binary NOT in /repo/node_modules/electron/dist/" && \
+        echo "Checking pnpm store for Electron:" && \
+        find /repo/node_modules/.pnpm -name "electron" -type f | head -5 || echo "No Electron in pnpm store" && \
+        echo "Making sure Electron binary is executable:" && \
+        chmod +x /repo/node_modules/electron/dist/electron || echo "Could not chmod Electron binary" && \
+        echo "Attempting to run project's Electron --version (may fail in headless env):" && \
+        (/repo/node_modules/electron/dist/electron --version --no-sandbox || echo "Project Electron --version FAILED") && \
+        echo "Checking what require('electron') resolves to:" && \
+        node -e "try { console.log(require('electron')); } catch(e) { console.error('require(electron) failed:', e.message); }" && \
+        echo "Checking what require.resolve('electron') finds:" && \
+        node -e "try { console.log(require.resolve('electron')); } catch(e) { console.error('require.resolve(electron) failed:', e.message); }" && \
+        echo "==== Electron Verification Done ===="
+
     # Creates /repo/debug.sh for quick environment checks inside the container.
     RUN cat <<'EOS' > /repo/debug.sh
 #!/usr/bin/env bash
 echo "=============== Debug capsule ==============="
 echo "Node        : $(node -v)"
 echo "Playwright  : $(pnpm dlx playwright@1.52.0 --version 2>/dev/null)"
+echo "Electron paths in container:"
+echo "- symlink   : $(ls -la /repo/node_modules/.bin/electron 2>/dev/null || echo 'Not found')"
+echo "- binary    : $(ls -la /repo/node_modules/electron/dist/electron 2>/dev/null || echo 'Not found')"
+echo "- npm path  : $(which electron 2>/dev/null || echo 'Not found')"
 node - <<'NODE'
   try {
     const r = require.resolve('electron');
     console.log('Electron    : resolves to', r);
-  } catch {
-    console.error('Electron    : ❌ NOT FOUND');
+    const fs = require('fs');
+    console.log('Exists      :', fs.existsSync(r));
+    if (fs.existsSync(r)) {
+      const stats = fs.statSync(r);
+      console.log('Executable  :', !!(stats.mode & 0o111));
+      console.log('Size        :', stats.size, 'bytes');
+    }
+  } catch (err) {
+    console.error('Electron    : ❌ NOT FOUND -', err.message);
   }
 NODE
 echo "============================================"
