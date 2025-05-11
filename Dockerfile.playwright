@@ -99,9 +99,23 @@ RUN set -euxo pipefail &&\
     echo "🚀 Installing ALL project dependencies via pnpm (including Electron)..." &&\
     # Clean pnpm store to avoid cache issues
     pnpm store prune &&\
-    # Install all dependencies with maximum verbosity 
+    # Install all dependencies with maximum verbosity
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pnpm -ddd install -w --frozen-lockfile --prod=false --ignore-scripts=false &&\
     echo "✅ Main pnpm install complete."
+
+################################################################################
+# 2b · Manually run Electron's post-install script (for pnpm v10+ compatibility)
+################################################################################
+# Execute Electron's install.js script directly to download the binary
+# This is needed because pnpm v10+ blocks scripts by default even with --ignore-scripts=false
+RUN set -euxo pipefail &&\
+    echo "🔄 Manually executing Electron's post-install script..." &&\
+    echo "This is necessary because pnpm v10+ blocks scripts by default" &&\
+    # Option 1: Run the install.js script directly
+    node -e "require('electron/install')" &&\
+    # Option 2: Alternative approach using pnpm rebuild (commented out as backup)
+    # pnpm rebuild electron &&\
+    echo "✅ Manual execution of Electron's post-install script complete."
 
 ################################################################################
 # 3 · Detailed Electron verification
