@@ -152,25 +152,29 @@ RUN set -euxo pipefail && \
     echo "👉 Node version: $NODE_VER" && \
     if [[ "$NODE_VER" != v20.* ]]; then \
         echo "❌ WRONG VERSION: Node.js 20.x required for Electron 35 compatibility, but got $NODE_VER" && \
-        echo "💡 This will likely cause the Electron install to fail. Continuing anyway..." && \
-        # Don't exit immediately, let the installer try and potentially fail visibly
-        # This helps with debugging but we expect it to fail
-        WRONG_NODE_VERSION=true; \
+        echo "💡 This will likely cause the Electron install to fail." && \
+        exit 1; \
     else \
         echo "✅ Using compatible Node.js version"; \
     fi && \
     echo "Running Electron installer with NODE_VER=$NODE_VER" && \
     node install.js && \
-    if [ "${WRONG_NODE_VERSION:-}" = "true" ]; then \
-        echo "⚠️ Installer ran with incompatible Node.js version but did not error. Unexpected!"; \
-    fi && \
     echo "✅ Electron install script finished. Checking for binary..." && \
     ls -la "$ELECTRON_DIR/dist" || echo "⚠️ dist directory not found" && \
     if [ -f "$ELECTRON_DIR/dist/electron" ]; then \
         echo "✅ Electron binary exists at $ELECTRON_DIR/dist/electron" && \
         chmod +x "$ELECTRON_DIR/dist/electron"; \
     else \
-        echo "❌ Electron binary not found at expected location"; \
+        echo "❌ Electron binary not found at expected location" && \
+        exit 1; \
+    fi && \
+    # Verify the binary is actually an ELF executable
+    if file "$ELECTRON_DIR/dist/electron" | grep -q "ELF 64-bit LSB executable"; then \
+        echo "✅ Electron binary is a proper ELF executable"; \
+    else \
+        echo "❌ Electron binary is NOT an ELF executable! Got: $(file "$ELECTRON_DIR/dist/electron")" && \
+        echo "This suggests the Electron installation failed to download the actual binary." && \
+        exit 1; \
     fi
 
 # Run a diagnostic search before the actual check
@@ -180,7 +184,7 @@ RUN set -euxo pipefail && \
     find /repo -name electron -type f || echo "No electron binaries found" && \
     find /repo -path "*/electron/dist" || echo "No electron/dist directories found"
 
-# Try to verify bundle existence with fallback approach
+# Verify that Electron binary exists - no fallback, we rely on the earlier installation step
 RUN set -exo pipefail && \
     ELECTRON_DIR=$(find /repo -path "*/node_modules/electron" -type d | head -n 1) && \
     if [ -z "$ELECTRON_DIR" ]; then \
@@ -190,14 +194,8 @@ RUN set -exo pipefail && \
         echo "✅ Found Electron binary at $ELECTRON_DIR/dist/electron"; \
     else \
         echo "❌ Electron binary not found at $ELECTRON_DIR/dist/electron" && \
-        echo "💡 Trying to install binary with pnpm..." && \
-        cd /repo && \
-        pnpm --filter tangent_electron exec npm rebuild electron --force && \
-        if [ -f "$ELECTRON_DIR/dist/electron" ]; then \
-            echo "✅ Binary now exists after rebuild"; \
-        else \
-            echo "❌ Binary still missing after rebuild" && exit 1; \
-        fi; \
+        echo "Earlier installation step failed to produce a binary." && \
+        exit 1; \
     fi
 
 # Create the helper path after the guard with more robust binary finder
