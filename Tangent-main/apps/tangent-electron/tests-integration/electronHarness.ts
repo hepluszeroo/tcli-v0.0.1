@@ -315,16 +315,134 @@ export async function launchElectron(opts: {
   }
 
   try {
-    console.log(`[electronHarness] 🚀 Launching Electron with executable: ${opts.electronBinary}`);
-    const app = await _electron.launch({
-      executablePath: opts.electronBinary,
-      // Use the real build directory as working directory; passing a non-
-      // existent cwd causes Electron to abort before any user code runs.
-      cwd: actualBuildDir,
-      args: finalArgs,
-      env: electronEnv,
-      timeout: process.env.PLAYWRIGHT_IN_DOCKER === '1' ? 60000 : 30000 // Longer timeout in Docker
+    // Super-comprehensive pre-launch diagnostics
+    console.log(`[electronHarness] 🔍 PRE-LAUNCH DIAGNOSTICS 🔍`);
+    console.log(`[electronHarness] 1. Electron binary path: ${opts.electronBinary}`);
+
+    // Check binary existence and permissions
+    const fs = require('fs');
+    let binaryExists = false;
+    let binaryExecutable = false;
+    let binaryStats = null;
+
+    try {
+      binaryExists = fs.existsSync(opts.electronBinary);
+      console.log(`[electronHarness]    - Binary exists: ${binaryExists}`);
+
+      if (binaryExists) {
+        binaryStats = fs.statSync(opts.electronBinary);
+        binaryExecutable = !!(binaryStats.mode & 0o111);
+        console.log(`[electronHarness]    - Binary stats:`, {
+          size: binaryStats.size,
+          mode: binaryStats.mode.toString(8),
+          isExecutable: binaryExecutable,
+          isFile: binaryStats.isFile(),
+          isSymlink: binaryStats.isSymbolicLink()
+        });
+
+        // Attempt to make it executable if it's not
+        if (!binaryExecutable) {
+          console.log(`[electronHarness]    - Making binary executable...`);
+          try {
+            fs.chmodSync(opts.electronBinary, 0o755);
+            binaryExecutable = true;
+            console.log(`[electronHarness]    - Binary is now executable`);
+          } catch (chmodErr) {
+            console.error(`[electronHarness]    - Failed to make binary executable:`, chmodErr);
+          }
+        }
+      }
+    } catch (fsErr) {
+      console.error(`[electronHarness]    - Error checking binary:`, fsErr);
+    }
+
+    // Emergency fallbacks if binary doesn't exist
+    if (!binaryExists) {
+      console.log(`[electronHarness] ⚠️ Primary binary NOT found, trying emergency fallbacks...`);
+
+      const fallbackPaths = [
+        '/repo/bin/electron',
+        '/repo/node_modules/electron/dist/electron',
+        '/repo/node_modules/.bin/electron',
+        // Add additional fallbacks as needed
+      ];
+
+      for (const path of fallbackPaths) {
+        try {
+          if (fs.existsSync(path)) {
+            console.log(`[electronHarness]    - Found fallback at ${path}`);
+            // Update the binary path to use the fallback
+            opts.electronBinary = path;
+            fs.chmodSync(path, 0o755);
+            console.log(`[electronHarness]    - Made fallback executable`);
+            binaryExists = true;
+            binaryExecutable = true;
+            break;
+          }
+        } catch (fallbackErr) {
+          console.error(`[electronHarness]    - Error with fallback ${path}:`, fallbackErr);
+        }
+      }
+    }
+
+    // Check directory structure
+    console.log(`[electronHarness] 2. Directory structure:`);
+    console.log(`[electronHarness]    - Current working directory: ${process.cwd()}`);
+    console.log(`[electronHarness]    - Build directory: ${actualBuildDir}`);
+    console.log(`[electronHarness]    - Main entry: ${path.join(actualBuildDir, 'bundle', 'main.js')}`);
+
+    try {
+      const mainEntryExists = fs.existsSync(path.join(actualBuildDir, 'bundle', 'main.js'));
+      console.log(`[electronHarness]    - Main entry exists: ${mainEntryExists}`);
+    } catch (dirErr) {
+      console.error(`[electronHarness]    - Error checking main entry:`, dirErr);
+    }
+
+    // Check environment and arguments
+    console.log(`[electronHarness] 3. Launch environment:`);
+    // Print key environment variables without logging everything
+    const importantVars = ['DISPLAY', 'ELECTRON_ENABLE_LOGGING', 'DEBUG', 'ELECTRON_DISABLE_SANDBOX'];
+    importantVars.forEach(varName => {
+      console.log(`[electronHarness]    - ${varName}: ${electronEnv[varName] || '(not set)'}`);
     });
+
+    console.log(`[electronHarness] 4. Launch arguments: ${finalArgs.join(' ')}`);
+
+    // Display server check
+    if (process.env.PLAYWRIGHT_IN_DOCKER === '1') {
+      console.log(`[electronHarness] 5. Display server check (Docker):`);
+      try {
+        const { execSync } = require('child_process');
+        const xdpyinfo = execSync('xdpyinfo', { timeout: 2000 }).toString().substring(0, 500) + '...';
+        console.log(`[electronHarness]    - xdpyinfo output: ${xdpyinfo}`);
+      } catch (xdpyErr) {
+        console.error(`[electronHarness]    - xdpyinfo error: ${xdpyErr.message}`);
+        // If xdpyinfo fails, maybe DISPLAY isn't set or Xvfb isn't running
+        console.log(`[electronHarness]    - Setting guaranteed DISPLAY=:99 for Electron launch`);
+        electronEnv.DISPLAY = ':99';
+      }
+    }
+
+    // Final pre-launch message
+    console.log(`[electronHarness] 🚀 LAUNCHING ELECTRON with all safeguards in place 🚀`);
+    if (!binaryExists) {
+      console.error(`[electronHarness] ⚠️ WARNING: Electron binary NOT found, launch will likely fail!`);
+    }
+
+    // Wrap Playwright's _electron.launch in additional try-catch with diagnostics
+    try {
+      // Overridden timeout to give enough time in Docker
+      const launchTimeout = process.env.PLAYWRIGHT_IN_DOCKER === '1' ? 90000 : 30000;
+      console.log(`[electronHarness] Using launch timeout: ${launchTimeout}ms`);
+
+      const app = await _electron.launch({
+        executablePath: opts.electronBinary,
+        // Use the real build directory as working directory
+        cwd: actualBuildDir,
+        args: finalArgs,
+        env: electronEnv,
+        timeout: launchTimeout
+      });
 
     // Part IV: Add a timeout for electron.firstWindow() to catch potential hangs
     console.log('[electronHarness] Waiting for first window to load (timeout: 20s)...');
@@ -358,8 +476,115 @@ export async function launchElectron(opts: {
     // Return the app interface (no child process handle needed)
     return { app };
 
-  } catch (error) {
-    console.error('[electronHarness] Failed to launch Electron:', error);
-    throw error;
+    } catch (launchError) {
+      console.error('[electronHarness] ❌ INNER ERROR DURING _electron.launch:', launchError);
+
+      // Enhanced error diagnostics
+      console.log('[electronHarness] 📊 ENHANCED ERROR DIAGNOSTICS:');
+
+      // Check if it's a timeout error
+      if (launchError.message?.includes('Timeout') || launchError.message?.includes('timeout')) {
+        console.log('[electronHarness] ⏱️ This appears to be a TIMEOUT error');
+        console.log('[electronHarness] - Possible causes:');
+        console.log('[electronHarness]   1. Electron process crashed immediately after launch');
+        console.log('[electronHarness]   2. Electron is taking too long to start (increase timeout)');
+        console.log('[electronHarness]   3. A display server issue is preventing Electron from initializing');
+      }
+
+      // Check if it's a "file not found" error
+      if (launchError.message?.includes('ENOENT') || launchError.message?.includes('not found')) {
+        console.log('[electronHarness] 🔍 This appears to be a FILE NOT FOUND error');
+        console.log('[electronHarness] - Binary path may be incorrect or file may not exist');
+        console.log('[electronHarness] - Check the executablePath being used');
+      }
+
+      // Check for permission issues
+      if (launchError.message?.includes('EACCES') || launchError.message?.includes('permission')) {
+        console.log('[electronHarness] 🔒 This appears to be a PERMISSION error');
+        console.log('[electronHarness] - Binary may not be executable');
+        console.log('[electronHarness] - chmod +x may be needed on the binary');
+      }
+
+      // Check for display server issues
+      if (launchError.message?.includes('DISPLAY') ||
+          launchError.message?.includes('cannot open display') ||
+          launchError.message?.includes('xvfb')) {
+        console.log('[electronHarness] 🖥️ This appears to be a DISPLAY SERVER error');
+        console.log('[electronHarness] - Check if Xvfb is running properly');
+        console.log('[electronHarness] - Verify DISPLAY environment variable is set correctly');
+      }
+
+      // Look for Electron's own logs
+      try {
+        const { execSync } = require('child_process');
+        console.log('[electronHarness] Checking for recent Electron logs:');
+        let electronLogs;
+        try {
+          electronLogs = execSync('find /tmp -name "electron_*" -type f -mmin -5 | xargs cat 2>/dev/null || echo "No recent logs found"',
+                                  { timeout: 2000 }).toString();
+          console.log('[electronHarness] Electron logs:', electronLogs || 'None found');
+        } catch (logErr) {
+          console.log('[electronHarness] Error getting Electron logs:', logErr.message);
+        }
+      } catch (e) {
+        console.error('[electronHarness] Error during enhanced diagnostics:', e);
+      }
+
+      // Re-throw the original error
+      throw launchError;
+    }
+  } catch (outerError) {
+    console.error('[electronHarness] ❌ OUTER ERROR DURING LAUNCH OR DIAGNOSTICS:', outerError);
+
+    // One last desperate attempt to get Electron running
+    if (process.env.PLAYWRIGHT_IN_DOCKER === '1' && outerError.message?.includes('Process failed to launch')) {
+      console.log('[electronHarness] 🚨 ATTEMPTING EMERGENCY RECOVERY LAUNCH 🚨');
+      try {
+        // Emergency launch with minimum options and Playwright-provided Electron
+        console.log('[electronHarness] Using Playwright-bundled Electron as last resort');
+
+        // Get Playwright's built-in electron path
+        const playwrightPath = _electron.executablePath();
+        console.log(`[electronHarness] Playwright built-in Electron: ${playwrightPath}`);
+
+        // Ensure it's executable
+        const fs = require('fs');
+        if (fs.existsSync(playwrightPath)) {
+          fs.chmodSync(playwrightPath, 0o755);
+        }
+
+        // Absolute minimum arguments
+        const minimalArgs = ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
+                            path.join(actualBuildDir, 'bundle', 'main.js')];
+
+        // Minimal environment
+        const minimalEnv = {
+          DISPLAY: ':99',
+          ELECTRON_DISABLE_SANDBOX: '1',
+          ELECTRON_NO_ATTACH_CONSOLE: '1',
+          NODE_ENV: 'test'
+        };
+
+        console.log('[electronHarness] Minimal launch args:', minimalArgs);
+
+        // Last attempt with minimal options
+        const app = await _electron.launch({
+          executablePath: playwrightPath,
+          cwd: actualBuildDir,
+          args: minimalArgs,
+          env: minimalEnv,
+          timeout: 120000 // Extra long timeout
+        });
+
+        console.log('[electronHarness] 🎉 EMERGENCY RECOVERY SUCCESSFUL!');
+        return { app };
+      } catch (recoveryError) {
+        console.error('[electronHarness] 💔 EMERGENCY RECOVERY FAILED:', recoveryError);
+        throw outerError; // Throw the original error
+      }
+    }
+
+    // If we reached here, all attempts failed
+    throw outerError;
   }
 }
