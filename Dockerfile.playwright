@@ -143,9 +143,7 @@ RUN set -euxo pipefail && \
     echo "⚙️  Found electron at: $ELECTRON_DIR" && \
     echo "⚙️  Running installer from directory: $ELECTRON_DIR" && \
     cd "$ELECTRON_DIR" && \
-    export ELECTRON_CUSTOM_DIR="$ELECTRON_DIR" && \
     export ELECTRON_SKIP_BINARY_DOWNLOAD=0 && \
-    export ELECTRON_OVERRIDE_DIST_PATH="$ELECTRON_DIR/dist" && \
     echo "👉 CWD: $(pwd)" && \
     echo "👉 Path: $PATH" && \
     NODE_VER=$(node --version) && \
@@ -157,8 +155,9 @@ RUN set -euxo pipefail && \
     else \
         echo "✅ Using compatible Node.js version"; \
     fi && \
-    echo "Running Electron installer with NODE_VER=$NODE_VER" && \
+    echo "Running Electron installer with NODE_VER=$NODE_VER (no path overrides)" && \
     node install.js && \
+    test -x "$ELECTRON_DIR/dist/electron" || (echo "❌ Electron binary missing after install"; exit 1) && \
     echo "✅ Electron install script finished. Checking for binary..." && \
     ls -la "$ELECTRON_DIR/dist" || echo "⚠️ dist directory not found" && \
     if [ -f "$ELECTRON_DIR/dist/electron" ]; then \
