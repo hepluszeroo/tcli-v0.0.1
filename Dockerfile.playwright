@@ -137,16 +137,19 @@ RUN set -euxo pipefail &&\
     (cd /repo && node -p "try { console.log(require.resolve('electron/install')); } catch(e) { console.error('Error:', e.code, e.message); }") &&\
     echo "Searching for any install.js files:" &&\
     find /repo -name "install.js" | grep -i electron &&\
-    # Option 1: Run the install.js script directly with error handling
-    node -e "try {
-        console.log('Attempting require(\\'electron/install\\') from CWD:', process.cwd());
-        require('electron/install');
-        console.log('electron/install script required successfully.');
-    } catch(e) {
-        console.error('ERROR during require(\\'electron/install\\'):', e);
-        console.error('Module resolution paths:', module.paths);
-        process.exit(1);
-    }" || echo "First attempt failed, trying with explicit path" &&\
+    # Option 1: Run the install.js script directly with error handling using heredoc
+    node -e "$(cat <<'EOF'
+try {
+  console.log('Attempting require(\"electron/install\") from CWD:', process.cwd());
+  require('electron/install');
+  console.log('electron/install script required successfully.');
+} catch(e) {
+  console.error('ERROR during require(\"electron/install\"):', e);
+  console.error('Module resolution paths:', module.paths);
+  process.exit(1);
+}
+EOF
+)" || echo "First attempt failed, trying with explicit path" &&\
     # Fallback: Try to find and run install.js directly if it exists
     (find /repo -name "install.js" | grep -i electron | xargs -I{} node {} || echo "Could not find or run install.js directly") &&\
     # Option 2: Alternative approach using pnpm rebuild
