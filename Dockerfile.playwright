@@ -16,15 +16,22 @@ SHELL ["/bin/bash", "-c"]
 ################################################################################
 USER root
 
-# Verify Node.js version and ensure Node 20 is installed
+# Verify Node.js version and ensure Node 20 is installed (pinned version for Electron 35 compatibility)
 RUN set -euo pipefail &&\
     node --version &&\
-    # Install Node 20 explicitly
+    # Remove Node 22 that Playwright image ships in /usr/local
+    if [ -x /usr/local/bin/node ]; then \
+        echo "Removing pre-installed Node $(/usr/local/bin/node -v) from /usr/local..." &&\
+        rm -f /usr/local/bin/node /usr/local/bin/npm /usr/local/bin/npx &&\
+        rm -rf /usr/local/lib/node_modules || true        # keeps image small; \
+    fi &&\
+    # Install Node 20 explicitly and remove any existing Node.js installations
+    apt-get remove -y nodejs npm || echo "No existing Node.js to remove" &&\
     curl -fsSL https://deb.nodesource.com/setup_20.x | bash - &&\
     apt-get update -qq &&\
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --allow-downgrades \
-        # Node.js
-        nodejs \
+        # Node.js 20 specifically (do not allow apt-get to upgrade)
+        nodejs=20.* \
         # Basic tools
         ca-certificates \
         curl \
@@ -56,8 +63,17 @@ RUN set -euo pipefail &&\
     rm -rf /var/lib/apt/lists/* &&\
     # Ensure corepack is enabled for pnpm
     corepack enable &&\
-    # Verify Node and npm versions after installation
-    echo "Node: $(node --version), npm: $(npm --version), pnpm: $(pnpm --version)" &&\
+    # Verify Node and npm versions after installation - CRITICAL CHECK
+    NODE_VER=$(node --version) &&\
+    echo "Node: $NODE_VER, npm: $(npm --version), pnpm: $(pnpm --version)" &&\
+    if [[ "$NODE_VER" != v20.* ]]; then \
+        echo "❌ ERROR: Node.js 20.x required for Electron 35 compatibility, but got $NODE_VER" && \
+        exit 1; \
+    fi &&\
+    # Create symlink to ensure Node 20 is used even if /usr/local/bin is on PATH
+    ln -sf /usr/bin/node /usr/local/bin/node &&\
+    ln -sf /usr/bin/npm /usr/local/bin/npm &&\
+    ln -sf /usr/bin/npx /usr/local/bin/npx &&\
     echo "✅ System dependencies and Node.js 20 installed successfully"
 
 # add Playwright's node-modules to PATH so `playwright` is always available
@@ -74,6 +90,10 @@ ENV CI=true PLAYWRIGHT_IN_DOCKER=1 DISPLAY=:99 \
 USER pwuser
 WORKDIR /repo
 COPY --chown=pwuser:pwuser . .
+
+# Add an explicit node version check AFTER user switch to ensure correct Node version is active
+RUN node --version | grep -q '^v20\.' \
+    || (echo "❌ ERROR: Node 20 required but found $(node --version)" && exit 1)
 
 # Ensure the integration test workspace path exists
 RUN mkdir -p /repo/Tangent-main/apps/IntegrationTestWorkspace
@@ -109,6 +129,16 @@ RUN set -euxo pipefail &&\
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pnpm -ddd install -r --frozen-lockfile --prod=false --ignore-scripts=false &&\
     echo "✅ Main pnpm install complete."
 
+# Double-check Node.js version right before Electron installation
+RUN set -euxo pipefail && \
+    NODE_VER=$(node --version) && \
+    echo "🔍 Pre-Electron install Node.js version check: $NODE_VER" && \
+    if [[ "$NODE_VER" != v20.* ]]; then \
+        echo "❌ CRITICAL ERROR: Node.js 20.x required for Electron 35 compatibility, but got $NODE_VER" && \
+        exit 1; \
+    fi && \
+    echo "✅ Using correct Node.js version ($NODE_VER) for Electron 35 compatibility"
+
 # Directly execute the first Electron installer we can find in the repo with enhanced diagnostics
 RUN set -euxo pipefail && \
     echo "🔍 Looking for electron/install.js ..." && \
@@ -127,8 +157,22 @@ RUN set -euxo pipefail && \
     export ELECTRON_OVERRIDE_DIST_PATH="$ELECTRON_DIR/dist" && \
     echo "👉 CWD: $(pwd)" && \
     echo "👉 Path: $PATH" && \
-    echo "👉 Node version: $(node --version)" && \
+    NODE_VER=$(node --version) && \
+    echo "👉 Node version: $NODE_VER" && \
+    if [[ "$NODE_VER" != v20.* ]]; then \
+        echo "❌ WRONG VERSION: Node.js 20.x required for Electron 35 compatibility, but got $NODE_VER" && \
+        echo "💡 This will likely cause the Electron install to fail. Continuing anyway..." && \
+        # Don't exit immediately, let the installer try and potentially fail visibly
+        # This helps with debugging but we expect it to fail
+        WRONG_NODE_VERSION=true; \
+    else \
+        echo "✅ Using compatible Node.js version"; \
+    fi && \
+    echo "Running Electron installer with NODE_VER=$NODE_VER" && \
     node install.js && \
+    if [ "${WRONG_NODE_VERSION:-}" = "true" ]; then \
+        echo "⚠️ Installer ran with incompatible Node.js version but did not error. Unexpected!"; \
+    fi && \
     echo "✅ Electron install script finished. Checking for binary..." && \
     ls -la "$ELECTRON_DIR/dist" || echo "⚠️ dist directory not found" && \
     if [ -f "$ELECTRON_DIR/dist/electron" ]; then \
