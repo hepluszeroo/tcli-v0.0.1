@@ -109,26 +109,78 @@ RUN set -euxo pipefail &&\
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pnpm -ddd install -r --frozen-lockfile --prod=false --ignore-scripts=false &&\
     echo "✅ Main pnpm install complete."
 
-# Directly execute the first Electron installer we can find in the repo
+# Directly execute the first Electron installer we can find in the repo with enhanced diagnostics
 RUN set -euxo pipefail && \
     echo "🔍 Looking for electron/install.js ..." && \
+    find /repo -path "*/node_modules/electron" -type d && \
+    find /repo -path "*/node_modules/electron/install.js" && \
     ELECTRON_INSTALL=$(find /repo -path "*/node_modules/electron/install.js" | head -n 1) && \
     if [ -z "$ELECTRON_INSTALL" ]; then \
        echo "❌   install.js not found anywhere → abort" && exit 1 ;\
     fi && \
-    echo "⚙️  Running $ELECTRON_INSTALL" && \
-    node "$ELECTRON_INSTALL"
+    ELECTRON_DIR=$(dirname "$ELECTRON_INSTALL") && \
+    echo "⚙️  Found electron at: $ELECTRON_DIR" && \
+    echo "⚙️  Running installer from directory: $ELECTRON_DIR" && \
+    cd "$ELECTRON_DIR" && \
+    export ELECTRON_CUSTOM_DIR="$ELECTRON_DIR" && \
+    export ELECTRON_SKIP_BINARY_DOWNLOAD=0 && \
+    export ELECTRON_OVERRIDE_DIST_PATH="$ELECTRON_DIR/dist" && \
+    echo "👉 CWD: $(pwd)" && \
+    echo "👉 Path: $PATH" && \
+    echo "👉 Node version: $(node --version)" && \
+    node install.js && \
+    echo "✅ Electron install script finished. Checking for binary..." && \
+    ls -la "$ELECTRON_DIR/dist" || echo "⚠️ dist directory not found" && \
+    if [ -f "$ELECTRON_DIR/dist/electron" ]; then \
+        echo "✅ Electron binary exists at $ELECTRON_DIR/dist/electron" && \
+        chmod +x "$ELECTRON_DIR/dist/electron"; \
+    else \
+        echo "❌ Electron binary not found at expected location"; \
+    fi
 
-# Verify the bundle exists before continuing
-RUN test -f $(dirname $(dirname $(find /repo/node_modules -type f -name chrome-sandbox | head -n1)))/electron
+# Run a diagnostic search before the actual check
+RUN set -euxo pipefail && \
+    echo "🔍 Searching for chrome-sandbox and Electron binaries..." && \
+    find /repo -name chrome-sandbox || echo "No chrome-sandbox found" && \
+    find /repo -name electron -type f || echo "No electron binaries found" && \
+    find /repo -path "*/electron/dist" || echo "No electron/dist directories found"
+
+# Try to verify bundle existence with fallback approach
+RUN set -exo pipefail && \
+    ELECTRON_DIR=$(find /repo -path "*/node_modules/electron" -type d | head -n 1) && \
+    if [ -z "$ELECTRON_DIR" ]; then \
+        echo "❌ Could not find any electron directory" && exit 1; \
+    fi && \
+    if [ -f "$ELECTRON_DIR/dist/electron" ]; then \
+        echo "✅ Found Electron binary at $ELECTRON_DIR/dist/electron"; \
+    else \
+        echo "❌ Electron binary not found at $ELECTRON_DIR/dist/electron" && \
+        echo "💡 Trying to install binary with pnpm..." && \
+        cd /repo && \
+        pnpm --filter tangent_electron exec npm rebuild electron --force && \
+        if [ -f "$ELECTRON_DIR/dist/electron" ]; then \
+            echo "✅ Binary now exists after rebuild"; \
+        else \
+            echo "❌ Binary still missing after rebuild" && exit 1; \
+        fi; \
+    fi
 
 # Create the helper path after the guard
 RUN set -euxo pipefail && \
-    ELECTRON_DIR=$(dirname $(dirname $(find /repo/node_modules -type f -name chrome-sandbox | head -n1))) && \
+    ELECTRON_DIR=$(find /repo -path "*/node_modules/electron" -type d | head -n 1) && \
+    if [ -z "$ELECTRON_DIR" ]; then \
+        echo "❌ Could not find any electron directory" && exit 1; \
+    fi && \
     echo "Electron dir: $ELECTRON_DIR" && \
     mkdir -p /repo/bin && \
-    ln -sf "$ELECTRON_DIR/electron" /repo/bin/electron && \
-    chmod +x "$ELECTRON_DIR/electron"
+    if [ -f "$ELECTRON_DIR/dist/electron" ]; then \
+        echo "✅ Creating symlink from $ELECTRON_DIR/dist/electron to /repo/bin/electron" && \
+        ln -sf "$ELECTRON_DIR/dist/electron" /repo/bin/electron && \
+        chmod +x "$ELECTRON_DIR/dist/electron"; \
+    else \
+        echo "❌ Cannot create symlink - source file does not exist" && exit 1; \
+    fi && \
+    echo "✅ Electron symlink created successfully"
 
 ################################################################################
 # 3 · Detailed Electron verification
