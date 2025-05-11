@@ -211,6 +211,22 @@ ARG STUB_HASH
         echo "Smoke-testing Playwright CLI..." && \
         npx playwright --version
 
+    # Pre-create the IntegrationTestWorkspace directory with correct permissions and settings
+    RUN echo "Ensuring IntegrationTestWorkspace directory exists with proper settings..." && \
+        mkdir -p /repo/Tangent-main/apps/IntegrationTestWorkspace/.tangent && \
+        echo '{"enableCodexIntegration":true}' > /repo/Tangent-main/apps/IntegrationTestWorkspace/.tangent/settings.json && \
+        chown -R pwuser:pwuser /repo/Tangent-main/apps/IntegrationTestWorkspace && \
+        chmod -R 755 /repo/Tangent-main/apps/IntegrationTestWorkspace && \
+        echo "Contents of settings.json:" && \
+        cat /repo/Tangent-main/apps/IntegrationTestWorkspace/.tangent/settings.json && \
+        echo "IntegrationTestWorkspace initialized and ready with Codex integration enabled"
+
+    # Create global settings directory to ensure Codex integration is enabled globally as well
+    RUN mkdir -p /home/pwuser/.config/Tangent && \
+        echo '{"enableCodexIntegration":true}' > /home/pwuser/.config/Tangent/test_settings.json && \
+        chown -R pwuser:pwuser /home/pwuser/.config/Tangent && \
+        echo "Global settings directory created with Codex integration enabled"
+
     # Switch back to pwuser for the rest of the operations
     USER pwuser
 

@@ -153,6 +153,63 @@ export async function launchElectron(opts: {
   if (process.env.PLAYWRIGHT_IN_DOCKER === '1') {
     console.log('[electronHarness] Running in Docker container');
 
+    // Verify workspace directory and settings in Docker
+    try {
+      const fs = require('fs');
+
+      // Verify workspace directory exists
+      const workspacePath = '/repo/Tangent-main/apps/IntegrationTestWorkspace';
+      const tangentDirPath = `${workspacePath}/.tangent`;
+      const settingsPath = `${tangentDirPath}/settings.json`;
+
+      console.log(`[electronHarness] Verifying Docker workspace at: ${workspacePath}`);
+      if (fs.existsSync(workspacePath)) {
+        console.log(`[electronHarness] ✅ Workspace directory exists`);
+      } else {
+        console.log(`[electronHarness] ❌ Workspace directory missing - creating it now`);
+        try {
+          fs.mkdirSync(workspacePath, { recursive: true });
+        } catch (e) {
+          console.error(`[electronHarness] Failed to create workspace directory:`, e);
+        }
+      }
+
+      if (fs.existsSync(tangentDirPath)) {
+        console.log(`[electronHarness] ✅ .tangent directory exists`);
+      } else {
+        console.log(`[electronHarness] ❌ .tangent directory missing - creating it now`);
+        try {
+          fs.mkdirSync(tangentDirPath, { recursive: true });
+        } catch (e) {
+          console.error(`[electronHarness] Failed to create .tangent directory:`, e);
+        }
+      }
+
+      if (fs.existsSync(settingsPath)) {
+        console.log(`[electronHarness] ✅ settings.json exists`);
+        try {
+          const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+          console.log(`[electronHarness] Settings content:`, settings);
+          if (settings.enableCodexIntegration !== true) {
+            console.log(`[electronHarness] ⚠️ enableCodexIntegration not true - fixing it`);
+            settings.enableCodexIntegration = true;
+            fs.writeFileSync(settingsPath, JSON.stringify(settings));
+          }
+        } catch (e) {
+          console.error(`[electronHarness] Error reading/writing settings:`, e);
+        }
+      } else {
+        console.log(`[electronHarness] ❌ settings.json missing - creating it now`);
+        try {
+          fs.writeFileSync(settingsPath, JSON.stringify({ enableCodexIntegration: true }));
+        } catch (e) {
+          console.error(`[electronHarness] Failed to create settings.json:`, e);
+        }
+      }
+    } catch (e) {
+      console.error(`[electronHarness] Error verifying workspace:`, e);
+    }
+
     // (PathHelpers now centralize MOCK_CODEX_PATH; no manual override needed here)
 
     Object.assign(electronEnv, {
@@ -162,7 +219,8 @@ export async function launchElectron(opts: {
       ELECTRON_DISABLE_SANDBOX: '1',
       ELECTRON_RUNNING_IN_DOCKER: '1', // Additional flag to indicate Docker environment
       NODE_ENV: 'test',
-      DEBUG: 'electron,electron:*,codex,main,tangent' // Enhanced debug logging
+      DISPLAY: ':99', // Ensure DISPLAY is set for Xvfb
+      DEBUG: 'electron,electron:*,codex,main,tangent,workspace:*' // Enhanced debug logging with workspace info
     })
   }
   
@@ -228,14 +286,44 @@ export async function launchElectron(opts: {
     }
   }
 
+  // Additional pre-launch verification for Docker
+  if (process.env.PLAYWRIGHT_IN_DOCKER === '1') {
+    try {
+      // Check if the workspace argument is correct
+      if (workspace) {
+        console.log(`[electronHarness] Workspace argument: "${workspace}"`);
+        if (workspace !== '/repo/Tangent-main/apps/IntegrationTestWorkspace') {
+          console.warn(`[electronHarness] ⚠️ Workspace argument doesn't match expected Docker path!`);
+        }
+      } else {
+        console.warn(`[electronHarness] ⚠️ No workspace argument provided!`);
+      }
+
+      // Ensure Electron binary is executable one final time
+      const fs = require('fs');
+      if (fs.existsSync(opts.electronBinary)) {
+        try {
+          fs.chmodSync(opts.electronBinary, 0o755);
+          console.log(`[electronHarness] Made Electron binary executable just before launch`);
+        } catch (e) {
+          console.error(`[electronHarness] Failed to chmod Electron binary:`, e);
+        }
+      }
+    } catch (e) {
+      console.error(`[electronHarness] Pre-launch verification error:`, e);
+    }
+  }
+
   try {
+    console.log(`[electronHarness] 🚀 Launching Electron with executable: ${opts.electronBinary}`);
     const app = await _electron.launch({
       executablePath: opts.electronBinary,
       // Use the real build directory as working directory; passing a non-
       // existent cwd causes Electron to abort before any user code runs.
       cwd: actualBuildDir,
       args: finalArgs,
-      env: electronEnv
+      env: electronEnv,
+      timeout: process.env.PLAYWRIGHT_IN_DOCKER === '1' ? 60000 : 30000 // Longer timeout in Docker
     });
 
     // Part IV: Add a timeout for electron.firstWindow() to catch potential hangs
