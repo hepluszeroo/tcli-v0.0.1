@@ -1,0 +1,2 @@
+# Ignore unit tests intended for Vitest
+**/src/**/tests/**

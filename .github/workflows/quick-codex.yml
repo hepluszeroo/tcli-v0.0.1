@@ -1,0 +1,104 @@
+name: quick-codex
+
+on:
+  pull_request:
+    paths:
+      - 'Tangent-main/**'
+      - 'Dockerfile.playwright'
+      - '.github/workflows/quick-codex.yml'
+
+# Add concurrency to cancel in-progress runs on the same branch/PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  codex:
+    strategy:
+      matrix:
+        os: [ubuntu-22.04]
+        # Removed macOS for now to reduce queue pressure
+        # Will restore after Ubuntu issues are resolved
+    runs-on: ${{ matrix.os }}
+    env:
+      DEBUG: codex
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+          run_install: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Build E2E bundle
+        run: pnpm --filter tangent_electron run build:test-e2e
+
+      - name: Build Docker image (fresh)
+        if: runner.os == 'Linux'
+        run: |
+          docker build --no-cache \
+            --build-arg CACHE_BUST=${{ github.sha }} \
+            --build-arg STUB_HASH=${{ github.sha }} \
+            -f Dockerfile.playwright -t tangent-codex-tests .
+
+      - name: Run quick Codex suite
+        run: |
+          if [ "$RUNNER_OS" == "macOS" ]; then
+            # Run directly on macOS with file transport enabled
+            cd Tangent-main/apps/tangent-electron
+            echo "DEBUG: Running Playwright from $(pwd)"
+            echo "DEBUG: Using grep 'Codex' filter (project=Tests) for Playwright discovery"
+            ls -la tests-integration/
+            echo "Listing tests…"
+            pnpm exec playwright test --config=./playwright.config.ts --project Tests --grep Codex --list
+
+            echo "Running Codex tests…"
+            DEBUG=pw:api,pw:test,codex,main,mock-codex INTEGRATION_TEST_USE_FILE_TRANSPORT=1 CODEX_DEBUG_TIMERS=1 DUMP_HANDLES=1 \
+            pnpm exec playwright test --config=./playwright.config.ts --project Tests --grep Codex --workers 1 --reporter=list --timeout=60000
+          else
+            # Run Docker container on Linux with Xvfb for display server
+            set -euxo pipefail
+            echo "::group::pre-flight container info"
+            docker version
+            docker images --format '{{.Repository}} {{.ID}}'
+            echo "::endgroup::"
+
+            # ⬇️ all commands echoed because of 'set -x'
+            docker run --rm \
+              -e PLAYWRIGHT_IN_DOCKER=1 \
+              -e DEBUG=codex \
+              -e CODEX_DEBUG_TIMERS=1 \
+              -e DUMP_HANDLES=1 \
+              -e ELECTRON_DISABLE_SANDBOX=1 \
+              tangent-codex-tests \
+              bash -c "set -euxo pipefail; \
+                       cd /repo/Tangent-main/apps/tangent-electron; \
+                       echo 'Inside container, node=' \$(node -v); \
+                       # Runtime verification of Node version and Electron binary
+                       if [[ \"\$(node -v)\" != v20.* ]]; then \
+                         echo \"❌ FATAL: Node 20.x required inside container, got \$(node -v)\" && \
+                         exit 1; \
+                       fi; \
+                       if ! /repo/bin/electron --version &>/dev/null; then \
+                         echo \"❌ FATAL: Electron binary missing or not executable at runtime\" && \
+                         exit 1; \
+                       fi; \
+                       echo \"✅ Runtime verification passed: Node \$(node -v), Electron \$(/repo/bin/electron --version 2>/dev/null)\"; \
+                       xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' \
+                         pnpm exec playwright test --config=playwright.config.ts \
+                         --project Tests --grep Codex --list; \
+                       DEBUG=pw:api,pw:test,codex,main,mock-codex \
+                         xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' \
+                         pnpm exec playwright test --config=playwright.config.ts \
+                         --project Tests --grep Codex --workers 1 --reporter=list --timeout=60000"
+          fi

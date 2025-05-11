@@ -1,0 +1,124 @@
+name: Packaged App Smoke Test
+
+on:
+  push:
+    branches: [main, feat/*, fix/*]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  smoke-test:
+    name: Packaged App Smoke Test
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, macos-latest]
+        include:
+          - os: macos-latest
+            env:
+              INTEGRATION_TEST_USE_FILE_TRANSPORT: 1
+    runs-on: ${{ matrix.os }}
+    env:
+      DEBUG: codex
+      ELECTRON_DISABLE_SANDBOX: ${{ runner.os == 'Linux' && '1' || '' }}
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+          run_install: false # Disable automatic install
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Debug Workspace Layout
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Listing files in current directory:"
+          ls -la
+          echo "Looking for pnpm-lock.yaml:"
+          find . -name "pnpm-lock.yaml" -print
+          echo "Looking for package.json:"
+          find . -name "package.json" -print
+          echo "Looking for pnpm-workspace.yaml:"
+          find . -name "pnpm-workspace.yaml" -print
+
+      - name: Install root dependencies
+        run: pnpm install --frozen-lockfile
+        # No working-directory needed as we want to run in repo root
+
+      - name: Install additional dependencies
+        run: |
+          npm install -g electron
+
+      - name: Install Tangent-electron dependencies
+        run: |
+          # Install dependencies specifically for Tangent-electron
+          cd Tangent-main/apps/tangent-electron
+          pnpm install --frozen-lockfile
+
+      - name: Build for smoke test
+        run: |
+          cd Tangent-main/apps/tangent-electron
+
+          # Basic build command for test - adapt as needed
+          if [ "$RUNNER_OS" == "macOS" ]; then
+            echo "Building for macOS"
+            pnpm run build:test-e2e
+          else
+            echo "Building for Linux"
+            pnpm run build:test-e2e
+          fi
+
+      - name: Run packaged app smoke test
+        run: |
+          chmod +x scripts/package-app-smoke-test.js
+          # Set environment variables as needed
+          if [ "$RUNNER_OS" == "macOS" ]; then
+            echo "Running smoke test on macOS with file transport enabled"
+            MOCK_CODEX_PATH=$(pwd)/scripts/mock_codex_headless.js \
+            INTEGRATION_TEST_USE_FILE_TRANSPORT=1 \
+            CODEX_DEBUG_TIMERS=1 \
+            DUMP_HANDLES=1 \
+            DEBUG=codex \
+            node scripts/package-app-smoke-test.js --debug
+          else
+            echo "Running smoke test on Linux"
+            MOCK_CODEX_PATH=$(pwd)/scripts/mock_codex_headless.js \
+            DEBUG=codex \
+            node scripts/package-app-smoke-test.js
+          fi
+
+      - name: Upload test logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-test-logs-${{ matrix.os }}
+          path: /tmp/tangent-smoke-test-*.log
+          retention-days: 7
+
+      - name: Upload additional debug logs (macOS only)
+        uses: actions/upload-artifact@v4
+        if: runner.os == 'macOS' && (failure() || success())
+        with:
+          name: additional-debug-logs-${{ matrix.os }}
+          path: |
+            /tmp/mock-codex-debug.log
+            /tmp/codex-*.log
+            /tmp/codex-fd.log
+            /tmp/codex-main-*.log
+            /tmp/codex-file-transport.log
+            /tmp/codex-file-transport-decisions.log
+            /tmp/codex-smoke-transport.log
+          retention-days: 7
+          if-no-files-found: ignore

@@ -1,0 +1,66 @@
+name: Dark Launch Verification
+
+on:
+  push:
+    branches: [main, feat/*, fix/*]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:  # Allow manual triggering
+
+# Add concurrency to cancel in-progress runs on the same branch/PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-dark-launch:
+    name: Verify Dark Launch Configuration
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+          run_install: false # Disable automatic install
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Debug Workspace Layout
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Listing files in current directory:"
+          ls -la
+          echo "Looking for pnpm-lock.yaml:"
+          find . -name "pnpm-lock.yaml" -print
+          echo "Looking for package.json:"
+          find . -name "package.json" -print
+          echo "Looking for pnpm-workspace.yaml:"
+          find . -name "pnpm-workspace.yaml" -print
+
+      - name: Install root dependencies
+        run: pnpm install --frozen-lockfile
+        # No working-directory needed as we want to run in repo root
+
+      - name: Run dark launch verification
+        run: |
+          chmod +x scripts/verify-dark-launch.js
+          node scripts/verify-dark-launch.js
+
+      - name: Upload verification logs
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: dark-launch-verify-logs
+          path: /tmp/dark-launch-*.log
+          retention-days: 7
