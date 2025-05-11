@@ -43,11 +43,12 @@ jobs:
       - name: Build E2E bundle
         run: pnpm --filter tangent_electron run build:test-e2e
 
-      - name: Build Docker image (no cache)
+      - name: Build Docker image (fresh)
         if: runner.os == 'Linux'
         run: |
           docker build --no-cache \
-            --build-arg STUB_HASH=$(git rev-parse HEAD) \
+            --build-arg CACHE_BUST=${{ github.sha }} \
+            --build-arg STUB_HASH=${{ github.sha }} \
             -f Dockerfile.playwright -t tangent-codex-tests .
 
       - name: Run quick Codex suite
@@ -83,6 +84,16 @@ jobs:
               bash -c "set -euxo pipefail; \
                        cd /repo/Tangent-main/apps/tangent-electron; \
                        echo 'Inside container, node=' \$(node -v); \
+                       # Runtime verification of Node version and Electron binary
+                       if [[ \"\$(node -v)\" != v20.* ]]; then \
+                         echo \"❌ FATAL: Node 20.x required inside container, got \$(node -v)\" && \
+                         exit 1; \
+                       fi; \
+                       if ! /repo/bin/electron --version &>/dev/null; then \
+                         echo \"❌ FATAL: Electron binary missing or not executable at runtime\" && \
+                         exit 1; \
+                       fi; \
+                       echo \"✅ Runtime verification passed: Node \$(node -v), Electron \$(/repo/bin/electron --version 2>/dev/null)\"; \
                        xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' \
                          pnpm exec playwright test --config=playwright.config.ts \
                          --project Tests --grep Codex --list; \
