@@ -289,6 +289,24 @@ export async function launchElectron(opts: {
   // Additional pre-launch verification for Docker
   if (process.env.PLAYWRIGHT_IN_DOCKER === '1') {
     try {
+      // CRITICAL FIX: Get Electron executable directly from Playwright for maximum reliability
+      try {
+        const fs = require('fs');
+        
+        // Use Playwright's built-in electron executablePath as our source of truth
+        const playwrightElectronPath = _electron.executablePath();
+        console.log(`[electronHarness] CRITICAL FIX: Playwright's Electron path: ${playwrightElectronPath}`);
+        
+        if (fs.existsSync(playwrightElectronPath)) {
+          console.log(`[electronHarness] ✅ Playwright's Electron binary exists`);
+          opts.electronBinary = playwrightElectronPath;
+          console.log(`[electronHarness] ✅ OVERRIDING electronBinary with Playwright's version: ${opts.electronBinary}`);
+          fs.chmodSync(playwrightElectronPath, 0o755);
+        }
+      } catch (playwrightElectronErr) {
+        console.error(`[electronHarness] Error getting Playwright's Electron:`, playwrightElectronErr);
+      }
+
       // Check if the workspace argument is correct
       if (workspace) {
         console.log(`[electronHarness] Workspace argument: "${workspace}"`);
