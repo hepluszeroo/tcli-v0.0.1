@@ -68,10 +68,28 @@ ARG STUB_HASH
     ################################################################
     # 2 · Two-phase installation: core dependencies first, then Electron
     ################################################################
-    # Step 1: Install core dependencies (excluding Electron)
-    RUN echo "🚀 Installing core dependencies (without Electron)..." &&\
-        PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pnpm install -w --prod=false --frozen-lockfile --prefer-offline &&\
-        echo "✅ Core dependencies installed successfully"
+    # Step 1: Install core dependencies and explicitly verify if Electron is installed
+    RUN echo "🚀 Installing core dependencies with explicit Electron checks..." &&\
+        PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pnpm install -w --prod=false --frozen-lockfile --prefer-offline --ignore-scripts=false &&\
+        echo "✅ Core dependencies installed successfully" &&\
+        echo "==== Verifying Electron after MAIN pnpm install ====" &&\
+        EXPECTED_PNPM_ELECTRON_PATH="/repo/node_modules/electron/dist/electron" &&\
+        echo "Expected path after pnpm install: ${EXPECTED_PNPM_ELECTRON_PATH}" &&\
+        if [ -f "${EXPECTED_PNPM_ELECTRON_PATH}" ]; then \
+          ls -la "${EXPECTED_PNPM_ELECTRON_PATH}" &&\
+          chmod +x "${EXPECTED_PNPM_ELECTRON_PATH}" &&\
+          echo "Running ${EXPECTED_PNPM_ELECTRON_PATH} --version:" &&\
+          "${EXPECTED_PNPM_ELECTRON_PATH}" --version --no-sandbox || echo "Version check failed (expected in headless env)" &&\
+          echo "✅ Electron binary found after main pnpm install."; \
+        else \
+          echo "⚠️ WARNING: Electron binary NOT FOUND at ${EXPECTED_PNPM_ELECTRON_PATH} after main pnpm install." &&\
+          echo "Listing /repo/node_modules/ to find electron directory:" &&\
+          ls -la /repo/node_modules/ | grep electron || true &&\
+          echo "Listing pnpm store to find electron:" &&\
+          find "$(pnpm store path)" -name "electron" -type d | head -n 5 || true &&\
+          echo "Will attempt targeted install in next steps."; \
+        fi &&\
+        echo "==== Electron Verification after main pnpm install Complete ===="
 
     # Step 2: Install Electron with comprehensive validation and dependency checks
     # Switch to root temporarily for ensuring we have necessary dependencies
@@ -95,11 +113,47 @@ ARG STUB_HASH
       echo "Expected Electron path: $EXPECTED"
 
       if [[ ! -f "$EXPECTED" ]]; then
-        echo "⚠️ Electron not found, falling back to npm install..."
+        echo "⚠️ Electron not found, trying multiple fallback methods..."
+
+        # Try fallback 1: targeted pnpm add at workspace root
+        echo "🔍 Fallback 1: Using pnpm add at workspace root..."
         cd /repo
-        rm -rf node_modules/electron node_modules/.bin/electron
-        npm install --no-save electron@35.2.1
-        echo "Direct npm install completed"
+        rm -rf node_modules/electron node_modules/.bin/electron 2>/dev/null || true
+        pnpm add -D electron@35.2.1 --workspace-root --ignore-scripts=false
+
+        # Check if that worked
+        if [[ -f "$EXPECTED" ]]; then
+          echo "✅ Fallback 1 successful: Electron installed via pnpm add at workspace root"
+        else
+          # Try fallback 2: direct pnpm add in main electron directory
+          echo "🔍 Fallback 2: Using pnpm add in tangent-electron directory..."
+          cd /repo/Tangent-main/apps/tangent-electron
+          pnpm add -D electron@35.2.1 --ignore-scripts=false
+
+          # Check if that worked
+          if [[ -f "$EXPECTED" ]]; then
+            echo "✅ Fallback 2 successful: Electron installed via pnpm add in tangent-electron directory"
+          else
+            # Try fallback 3: npm install as last resort
+            echo "🔍 Fallback 3: Using npm install as last resort..."
+            cd /repo
+            rm -rf node_modules/electron node_modules/.bin/electron 2>/dev/null || true
+            # Clean npm cache to avoid potential issues
+            npm cache clean --force
+            npm install --no-save electron@35.2.1
+
+            # Show npm debug logs if this fails
+            if [[ ! -f "$EXPECTED" ]]; then
+              echo "❌ All fallback methods failed! Showing npm logs:"
+              ls -la /home/pwuser/.npm/_logs/ || true
+              cat /home/pwuser/.npm/_logs/*-debug-0.log || echo "npm debug log not found"
+              find /repo -name "electron" -type f | head -n 10 || echo "No electron binary found in /repo"
+              exit 1
+            else
+              echo "✅ Fallback 3 successful: Electron installed via npm install"
+            fi
+          fi
+        fi
       fi
 
       if [[ -f "$EXPECTED" ]]; then
