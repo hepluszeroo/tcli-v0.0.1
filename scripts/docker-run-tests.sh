@@ -2,6 +2,13 @@
 set -euo pipefail
 set -x                          # verbose for CI
 
+# Critical Node version check - abort immediately if not Node 20
+if [[ "$(node -v)" != v20.* ]]; then
+  echo "❌ FATAL ERROR: Node 20.x required inside test container, got $(node -v)"
+  echo "This will cause Electron installation to fail silently."
+  exit 1
+fi
+
 # 1. Enter correct working directory
 cd /repo/Tangent-main/apps/tangent-electron
 

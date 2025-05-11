@@ -100,6 +100,10 @@ RUN echo "Setting up .npmrc for better reliability..." &&\
 ################################################################################
 # 2 · Focused single-step pnpm install with Electron
 ################################################################################
+# Use CACHE_BUST to force rebuild of this layer on every CI run
+ARG CACHE_BUST
+RUN echo "Cache bust value: ${CACHE_BUST:-none}"
+
 # Primary installation step - focused on installing ALL dependencies including Electron
 # This should be the ONLY place Electron is installed
 RUN set -euxo pipefail &&\
@@ -221,7 +225,15 @@ RUN set -euxo pipefail && \
         TARGET=$(readlink -f /repo/bin/electron) && \
         echo "🔍 Symlink points to: $TARGET"; \
     fi && \
-    ls -la /repo/bin/electron
+    ls -la /repo/bin/electron && \
+    # Verify that the Electron binary is actually an executable file, not just a JS wrapper
+    if file "$ELECTRON_BINARY" | grep -q "ELF 64-bit LSB executable"; then \
+        echo "✅ Electron binary is a proper ELF executable"; \
+    else \
+        echo "❌ Electron binary is NOT an ELF executable! Got: $(file "$ELECTRON_BINARY")" && \
+        echo "This suggests the Electron installation failed to download the actual binary." && \
+        exit 1; \
+    fi
 
 ################################################################################
 # 3 · Detailed Electron verification
@@ -490,6 +502,8 @@ CMD ["/repo/scripts/docker-run-tests.sh"]
 # repository HEAD changes.  Supply with
 #   docker build --build-arg STUB_HASH=$(git rev-parse HEAD) …
 ARG STUB_HASH=dev
+# Additional cache-buster to force rebuild on every CI run
+ARG CACHE_BUST=0
 
 # ------------------------------------------------------------------
 # 10 · FINAL stub copy – guarantees the very latest stub_main.js is
