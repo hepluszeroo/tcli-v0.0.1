@@ -111,22 +111,33 @@ RUN set -euxo pipefail &&\
     # Verify electron package was installed
     ls -la /repo/node_modules/electron || echo "WARNING: electron directory not created by pnpm install!" &&\
     # Check for install.js in electron directory
-    ls -la /repo/node_modules/electron/install.js || echo "WARNING: electron/install.js not found!" &&\
-    # --- Force-download the native Electron bundle -------------------
-    echo "Forcing download of native Electron bundle..." &&\
-    node -e "require('electron/install')"
+    ls -la /repo/node_modules/electron/install.js || echo "WARNING: electron/install.js not found!"
+
+# Debug step to capture exact failure point
+RUN set -euxo pipefail ;\
+    echo "DEBUG-START: what happens if we run the installer now?" ;\
+    node -p "require.resolve('electron/install.js')" ;\
+    node -e "console.log('about to run'); require('electron/install.js')" ;\
+    echo "DEBUG-END"
+
+# Install the @pnpm/allow-scripts plugin to enable Electron's post-install script
+RUN cd /repo && pnpm add -DW @pnpm/allow-scripts
 
 ################################################################################
 # 2b · Manually run Electron's post-install script (for pnpm v10+ compatibility)
 ################################################################################
 # Execute Electron's post-install script directly to download the binary
-# This is needed because pnpm v10+ blocks scripts by default even with --ignore-scripts=false
+# Call the installer directly, bypassing pnpm's script blocking
 RUN echo "🔄 Manually executing Electron's post-install script..." && \
-    echo "This is necessary because pnpm v10+ blocks scripts by default" && \
+    echo "This is necessary because pnpm v10+ may still block scripts" && \
     cd /repo && \
-    echo "Running pnpm rebuild electron to ensure the binary is downloaded:" && \
-    pnpm rebuild electron && \
-    echo "✅ Electron post-install script executed via pnpm rebuild"
+    echo "Calling the installer directly via require.resolve:" && \
+    node -e "require(require.resolve('electron/install.js'))" && \
+    echo "✅ Electron post-install script executed directly"
+
+# Verify the bundle exists before continuing
+RUN test -f $(dirname $(dirname $(find /repo/node_modules \
+             -type f -name chrome-sandbox | head -n1)))/electron
 
 ################################################################################
 # 3 · Detailed Electron verification
