@@ -15,6 +15,11 @@ export default defineConfig<TangentOptions>({
 	testDir: './tests-integration',
 	// Part IV: Add global timeout to prevent infinite hangs
 	globalTimeout: 300000, // 5 minutes max for entire suite
+	// Part V: Add detailed Playwright debug logging for troubleshooting in Docker
+	reporter: [['list'], ['html', { open: 'never' }]],
+	// Increased timeout for Electron launch in Docker
+	timeout: 60000,
+	retries: 1, // Add retries to make tests more robust
 	projects: [
 		{
 			name: 'Tests',
@@ -27,13 +32,20 @@ export default defineConfig<TangentOptions>({
 					args: [
 						'--no-sandbox',
 						'--disable-gpu',
-						'--disable-dev-shm-usage'
+						'--disable-dev-shm-usage',
+						'--disable-setuid-sandbox',
+						'--no-zygote',
+						'--disable-accelerated-2d-canvas'
 					],
 					env: {
 						// Ensure Electron logs are captured
 						ELECTRON_ENABLE_LOGGING: '1',
-						ELECTRON_DISABLE_SANDBOX: '1'
-					}
+						ELECTRON_DISABLE_SANDBOX: '1',
+						ELECTRON_NO_ATTACH_CONSOLE: '1',
+						DEBUG: 'electron,electron:*,pw:*'
+					},
+					// Increased timeout for Electron launch in Docker
+					timeout: 30000
 				}
 			}
 		},
