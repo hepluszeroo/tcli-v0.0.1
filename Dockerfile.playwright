@@ -255,7 +255,8 @@ USER root
 
 # Install Playwright browsers and dependencies
 RUN echo "Installing Playwright browsers and dependencies..." &&\
-    npx playwright install --with-deps chromium firefox webkit electron &&\
+    # Remove 'electron' from the installation targets as it's not a valid Playwright browser
+    npx playwright install --with-deps chromium firefox webkit &&\
     echo "Smoke-testing Playwright CLI..." &&\
     npx playwright --version
 
