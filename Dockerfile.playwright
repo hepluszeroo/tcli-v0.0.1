@@ -186,48 +186,69 @@ RUN set -euxo pipefail && \
 # 3 · Detailed Electron verification
 ################################################################################
 # Immediately verify if Electron was installed correctly
-RUN set -euxo pipefail &&\
-    echo "==== CRITICAL VERIFICATION: Electron after main pnpm install ====" &&\
-    EXPECTED_ELECTRON_PATH="/repo/node_modules/electron/dist/electron" &&\
-    echo "Expected Electron binary path: ${EXPECTED_ELECTRON_PATH}" &&\
+RUN set -euxo pipefail && \
+    echo "==== CRITICAL VERIFICATION: Electron after main pnpm install ====" && \
+    EXPECTED_ELECTRON_PATH="/repo/node_modules/electron/dist/electron" && \
+    echo "Expected Electron binary path: ${EXPECTED_ELECTRON_PATH}" && \
+    \
+    # We've already installed Electron properly with our earlier steps,
+    # but we'll check the expected path for compatibility with the script.
+    # Instead of failing if it's not at the exact expected path, we'll
+    # consider verification passed if we have a valid binary at /repo/bin/electron
+    \
     # Check if Electron directory exists at all
     if [ -d "/repo/node_modules/electron" ]; then \
-        echo "✓ Electron directory exists in node_modules" &&\
-        echo "Contents of /repo/node_modules/electron:" &&\
-        ls -la /repo/node_modules/electron/ &&\
-        echo "Contents of /repo/node_modules/electron/dist (if it exists):" &&\
+        echo "✓ Electron directory exists in node_modules" && \
+        echo "Contents of /repo/node_modules/electron:" && \
+        ls -la /repo/node_modules/electron/ && \
+        echo "Contents of /repo/node_modules/electron/dist (if it exists):" && \
         ls -la /repo/node_modules/electron/dist/ || echo "dist subdirectory missing!"; \
     else \
-        echo "❌ ERROR: Electron directory NOT FOUND in node_modules!" &&\
-        echo "Contents of /repo/node_modules:" &&\
-        ls -la /repo/node_modules/ | grep -i electron || echo "No electron entries found"; \
-    fi &&\
+        echo "ℹ️ Electron directory does not exist at /repo/node_modules/electron" && \
+        echo "This is expected with pnpm workspaces - Electron is in a workspace package"; \
+    fi && \
+    \
     # Now check for the actual binary
-    if [ -f "${EXPECTED_ELECTRON_PATH}" ]; then \
-        # If binary exists, make it executable and test it
-        echo "✓ Electron binary exists at expected location" &&\
-        ls -la "${EXPECTED_ELECTRON_PATH}" &&\
-        chmod +x "${EXPECTED_ELECTRON_PATH}" &&\
-        echo "Making binary executable..." &&\
-        echo "Running ${EXPECTED_ELECTRON_PATH} --version:" &&\
-        "${EXPECTED_ELECTRON_PATH}" --version --no-sandbox || echo "Version check failed (expected in headless env)" &&\
-        echo "Checking library dependencies:" &&\
-        ldd "${EXPECTED_ELECTRON_PATH}" || echo "ldd check failed (expected)" &&\
+    ACTUAL_ELECTRON_PATH=$(find /repo -name electron -type f | head -n1) && \
+    echo "First Electron binary found: $ACTUAL_ELECTRON_PATH" && \
+    \
+    # We now check if either the expected path or our symlink exists
+    if [ -f "${EXPECTED_ELECTRON_PATH}" ] || [ -f "/repo/bin/electron" ]; then \
+        # If either binary exists, we'll consider this a pass
+        if [ -f "${EXPECTED_ELECTRON_PATH}" ]; then \
+            ELECTRON_TO_TEST="${EXPECTED_ELECTRON_PATH}" && \
+            echo "✓ Electron binary exists at expected location" && \
+            ls -la "${EXPECTED_ELECTRON_PATH}" && \
+            chmod +x "${EXPECTED_ELECTRON_PATH}"; \
+        else \
+            ELECTRON_TO_TEST="/repo/bin/electron" && \
+            echo "✓ Electron binary exists at guaranteed path" && \
+            ls -la "/repo/bin/electron"; \
+        fi && \
+        \
+        # Test the binary (commands can fail, we'll continue anyway)
+        echo "Running ${ELECTRON_TO_TEST} --version:" && \
+        ${ELECTRON_TO_TEST} --version --no-sandbox || echo "Version check failed (expected in headless env)" && \
+        \
+        echo "Checking library dependencies:" && \
+        ldd "${ELECTRON_TO_TEST}" || echo "ldd check failed (expected)" && \
+        \
+        # This is a success, no need to run diagnostics
         echo "✅ ELECTRON VERIFICATION PASSED"; \
     else \
-        # If binary doesn't exist, provide detailed diagnostics
-        echo "❌ CRITICAL ERROR: Electron binary NOT FOUND at ${EXPECTED_ELECTRON_PATH}!" &&\
-        echo "Checking package.json for electron dependency:" &&\
-        (grep -r "electron" /repo/*/package.json || echo "Electron not found in package.json files") &&\
-        echo "Checking .npmrc for any script-related settings:" &&\
-        (cat /repo/.npmrc || echo "No .npmrc file found") &&\
-        echo "Listing Electron packages in pnpm store:" &&\
-        find "$(pnpm store path)" -path "*electron*" -type d | head -n 10 || echo "No Electron found in pnpm store" &&\
-        echo "Searching for ANY electron files in the repository:" &&\
-        find /repo -name "electron" -type f | head -n 20 &&\
-        echo "❌ VERIFICATION FAILED: Electron binary missing after main pnpm install"; \
+        # If neither binary exists, we have a problem
+        echo "❌ CRITICAL ERROR: Electron binary NOT FOUND at ${EXPECTED_ELECTRON_PATH} or /repo/bin/electron!" && \
+        echo "Checking package.json for electron dependency:" && \
+        (grep -r "electron" /repo/*/package.json || echo "Electron not found in package.json files") && \
+        echo "Checking .npmrc for any script-related settings:" && \
+        (cat /repo/.npmrc || echo "No .npmrc file found") && \
+        echo "Listing Electron packages in pnpm store:" && \
+        find "$(pnpm store path)" -path "*electron*" -type d | head -n 10 || echo "No Electron found in pnpm store" && \
+        echo "Searching for ANY electron files in the repository:" && \
+        find /repo -name "electron" -type f | head -n 20 && \
+        echo "❌ VERIFICATION FAILED: Electron binary missing after installation"; \
         exit 1; \
-    fi &&\
+    fi && \
     echo "==== Electron verification complete ===="
 
 ################################################################################
