@@ -103,60 +103,11 @@ function getElectronExec(): string {
 
   // In Docker environment, use our guaranteed Electron binary
   if (process.env.PLAYWRIGHT_IN_DOCKER === '1') {
-    console.log('[tangent.ts] Docker environment detected. Checking for Electron in priority order...');
+    console.log('[tangent.ts] Docker environment detected. Using standard Electron path...');
 
-    // First priority: Hard-coded guaranteed path from our Dockerfile
-    const guaranteedPath = '/repo/bin/electron';
-    if (fs.existsSync(guaranteedPath)) {
-      console.log('[tangent.ts] ✅ Found guaranteed Electron binary at:', guaranteedPath);
-      try {
-        fs.chmodSync(guaranteedPath, 0o755);
-        console.log('[tangent.ts] Made guaranteed Electron binary executable');
-        return guaranteedPath;
-      } catch (chmodErr) {
-        console.log('[tangent.ts] Warning: Could not make guaranteed binary executable:', chmodErr.message);
-        // Still return it, but it might fail to execute if permissions are wrong
-        return guaranteedPath;
-      }
-    }
-
-    // Second priority: Check saved path from electron-binary-path.txt
-    try {
-      if (fs.existsSync('/tmp/electron-binary-path.txt')) {
-        const savedPath = fs.readFileSync('/tmp/electron-binary-path.txt', 'utf8').trim();
-        console.log('[tangent.ts] Found path in electron-binary-path.txt:', savedPath);
-
-        if (fs.existsSync(savedPath)) {
-          console.log('[tangent.ts] File exists, using this Electron binary');
-          try {
-            fs.chmodSync(savedPath, 0o755);
-            console.log('[tangent.ts] Made Electron binary executable');
-            return savedPath;
-          } catch (chmodErr) {
-            console.log('[tangent.ts] Warning: Could not make binary executable');
-            // Still return it, but it might fail to execute if permissions are wrong
-            return savedPath;
-          }
-        } else {
-          console.log('[tangent.ts] Saved path does not exist, continuing search');
-        }
-      }
-    } catch (readErr) {
-      console.log('[tangent.ts] Error reading saved Electron path:', readErr.message);
-    }
-
-    // Third priority: Standard install location
+    // Use the standard path directly for Docker environment
     const standardPath = '/repo/node_modules/electron/dist/electron';
-    if (fs.existsSync(standardPath)) {
-      console.log('[tangent.ts] Found standard Electron binary at:', standardPath);
-      try {
-        fs.chmodSync(standardPath, 0o755);
-        return standardPath;
-      } catch (e) {
-        console.log('[tangent.ts] Warning: Could not chmod standard binary');
-        return standardPath;
-      }
-    }
+    return standardPath;
   }
 
   // UPDATED: We no longer use executablePath() as it doesn't exist in Playwright 1.52
