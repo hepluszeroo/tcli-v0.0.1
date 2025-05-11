@@ -165,22 +165,32 @@ RUN set -exo pipefail && \
         fi; \
     fi
 
-# Create the helper path after the guard
+# Create the helper path after the guard with more robust binary finder
 RUN set -euxo pipefail && \
-    ELECTRON_DIR=$(find /repo -path "*/node_modules/electron" -type d | head -n 1) && \
-    if [ -z "$ELECTRON_DIR" ]; then \
-        echo "❌ Could not find any electron directory" && exit 1; \
+    echo "🔍 Searching for Electron binary in repository..." && \
+    # The actual electron binary is in the dist subdirectory, not directly in the electron directory
+    ELECTRON_BINARY=$(find /repo -path "*/node_modules/electron/dist/electron" -type f | head -n 1) && \
+    if [ -z "$ELECTRON_BINARY" ]; then \
+        echo "❌ Could not find electron binary. Showing all electron-related folders:" && \
+        find /repo -path "*/electron*" -type d | sort && \
+        find /repo -name "electron" -type f | sort && \
+        echo "Showing all directories under pnpm store:" && \
+        find /repo/node_modules/.pnpm -type d -maxdepth 3 | grep electron && \
+        echo "Failed to find Electron binary - cannot create symlink" && exit 1; \
     fi && \
-    echo "Electron dir: $ELECTRON_DIR" && \
+    echo "📍 Found electron binary at: $ELECTRON_BINARY" && \
+    # Make sure the binary is executable
+    chmod +x "$ELECTRON_BINARY" && \
+    # Create symlink
     mkdir -p /repo/bin && \
-    if [ -f "$ELECTRON_DIR/dist/electron" ]; then \
-        echo "✅ Creating symlink from $ELECTRON_DIR/dist/electron to /repo/bin/electron" && \
-        ln -sf "$ELECTRON_DIR/dist/electron" /repo/bin/electron && \
-        chmod +x "$ELECTRON_DIR/dist/electron"; \
-    else \
-        echo "❌ Cannot create symlink - source file does not exist" && exit 1; \
+    ln -sf "$ELECTRON_BINARY" /repo/bin/electron && \
+    echo "✅ Electron symlink created successfully from $ELECTRON_BINARY to /repo/bin/electron" && \
+    # Verify the symlink works
+    if [ -L "/repo/bin/electron" ]; then \
+        TARGET=$(readlink -f /repo/bin/electron) && \
+        echo "🔍 Symlink points to: $TARGET"; \
     fi && \
-    echo "✅ Electron symlink created successfully"
+    ls -la /repo/bin/electron
 
 ################################################################################
 # 3 · Detailed Electron verification
@@ -254,16 +264,16 @@ RUN set -euxo pipefail && \
 ################################################################################
 # 4 · Create symlinks and guaranteed paths for Electron binary
 ################################################################################
-# Set up symlinks and guaranteed paths if Electron binary exists
+# Symlink has already been created in an earlier step - this is just a sanity check
 RUN set -euxo pipefail &&\
-    echo "Setting up Electron binary symlinks and guaranteed paths..." &&\
-    ELECTRON_DIR=$(dirname $(dirname $(find /repo/node_modules \
-               -type f -name chrome-sandbox | head -n1))) && \
-    echo "Electron dir: $ELECTRON_DIR" && \
-    mkdir -p /repo/bin && \
-    ln -sf "$ELECTRON_DIR/electron" /repo/bin/electron && \
-    chmod +x "$ELECTRON_DIR/electron" && \
-    echo "✅ Electron binary symlinks and guaranteed paths set up successfully"
+    echo "Verifying Electron symlink exists..." &&\
+    if [ -L "/repo/bin/electron" ]; then \
+        TARGET=$(readlink -f /repo/bin/electron) && \
+        echo "✅ Symlink already exists at /repo/bin/electron → $TARGET"; \
+    else \
+        echo "❌ Symlink does not exist - this is unexpected!"; \
+        exit 1; \
+    fi
 
 ################################################################################
 # 5 · Install Playwright browsers and dependencies
