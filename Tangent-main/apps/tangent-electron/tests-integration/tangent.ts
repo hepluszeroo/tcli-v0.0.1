@@ -103,11 +103,10 @@ function getElectronExec(): string {
 
   // In Docker environment, use our guaranteed Electron binary
   if (process.env.PLAYWRIGHT_IN_DOCKER === '1') {
-    console.log('[tangent.ts] Docker environment detected. Using standard Electron path...');
+    console.log('[tangent.ts] Docker environment detected. Using guaranteed Electron path...');
 
-    // Use the standard path directly for Docker environment
-    const standardPath = '/repo/node_modules/electron/dist/electron';
-    return standardPath;
+    // Use the guaranteed path directly for Docker environment
+    return '/repo/bin/electron';
   }
 
   // UPDATED: We no longer use executablePath() as it doesn't exist in Playwright 1.52

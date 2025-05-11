@@ -111,7 +111,10 @@ RUN set -euxo pipefail &&\
     # Verify electron package was installed
     ls -la /repo/node_modules/electron || echo "WARNING: electron directory not created by pnpm install!" &&\
     # Check for install.js in electron directory
-    ls -la /repo/node_modules/electron/install.js || echo "WARNING: electron/install.js not found!"
+    ls -la /repo/node_modules/electron/install.js || echo "WARNING: electron/install.js not found!" &&\
+    # --- Force-download the native Electron bundle -------------------
+    echo "Forcing download of native Electron bundle..." &&\
+    node -e "require('electron/install')"
 
 ################################################################################
 # 2b · Manually run Electron's post-install script (for pnpm v10+ compatibility)
@@ -234,17 +237,15 @@ RUN set -euxo pipefail &&\
 # Set up symlinks and guaranteed paths if Electron binary exists
 RUN set -euxo pipefail &&\
     echo "Setting up Electron binary symlinks and guaranteed paths..." &&\
-    ELECTRON_PATH="/repo/node_modules/electron/dist/electron" &&\
-    # Ensure binary is executable
-    chmod +x "${ELECTRON_PATH}" &&\
-    # Ensure symlink exists
-    mkdir -p /repo/node_modules/.bin &&\
-    ln -sf ../electron/dist/electron /repo/node_modules/.bin/electron &&\
-    # Preserve full Electron bundle; just create a helper symlink
-    mkdir -p /repo/bin &&\
-    ln -sf "${ELECTRON_PATH}" /repo/bin/electron &&\
+    # real bundle now exists – link its binary
+    ELECTRON_DIR=$(dirname $(dirname $(find /repo/node_modules \
+             -type f -name chrome-sandbox | head -n1))) && \
+    echo "Electron dir: $ELECTRON_DIR" && \
+    mkdir -p /repo/bin && \
+    ln -sf "$ELECTRON_DIR/electron" /repo/bin/electron && \
+    chmod +x "$ELECTRON_DIR/electron" && \
     # Save path for scripts
-    echo "${ELECTRON_PATH}" > /tmp/electron-binary-path.txt &&\
+    echo "$ELECTRON_DIR/electron" > /tmp/electron-binary-path.txt &&\
     echo "✅ Electron binary symlinks and guaranteed paths set up successfully"
 
 ################################################################################
