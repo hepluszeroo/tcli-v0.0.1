@@ -126,62 +126,7 @@ RUN echo "🔄 Manually executing Electron's post-install script..." && \
     cd /repo && \
     echo "Running pnpm rebuild electron to ensure the binary is downloaded:" && \
     pnpm rebuild electron && \
-    echo "✅ Electron post-install script executed via pnpm rebuild" && \
-    echo "" && \
-    echo "🔧 Ensuring Electron is properly linked in the expected locations..." && \
-    # Create directory structure for expected Electron location
-    mkdir -p /repo/node_modules/electron/dist && \
-    # Find available Electron binaries and packages
-    echo "Looking for existing Electron binaries:" && \
-    find /repo -name "electron" -type f | grep -v "node_modules/electron/dist" && \
-    echo "Looking for Electron package directories:" && \
-    find /repo -type d -path "*/node_modules/electron" | grep -v "/repo/node_modules/electron" && \
-    # Find Electron in pnpm store (any version)
-    PNPM_ELECTRON_DIR=$(find /repo/node_modules/.pnpm -type d -path "*/node_modules/electron" | head -1) && \
-    # Copy or link files from pnpm store first
-    if [ -n "$PNPM_ELECTRON_DIR" ]; then \
-        echo "Found Electron package in pnpm store at $PNPM_ELECTRON_DIR, copying essential files..." && \
-        # Copy package.json, install.js and other key files
-        cp -r $PNPM_ELECTRON_DIR/package.json /repo/node_modules/electron/ && \
-        cp -r $PNPM_ELECTRON_DIR/index.js /repo/node_modules/electron/ && \
-        cp -r $PNPM_ELECTRON_DIR/install.js /repo/node_modules/electron/ && \
-        cp -r $PNPM_ELECTRON_DIR/path.txt /repo/node_modules/electron/ 2>/dev/null || true && \
-        # Link or copy the binary
-        if [ -f "$PNPM_ELECTRON_DIR/dist/electron" ]; then \
-            echo "Found Electron binary in pnpm store, creating symlink..." && \
-            ln -sf $PNPM_ELECTRON_DIR/dist/electron /repo/node_modules/electron/dist/electron; \
-        fi; \
-    # Next, try Tangent-main's node_modules
-    elif [ -d "/repo/Tangent-main/apps/tangent-electron/node_modules/electron" ]; then \
-        echo "Found Electron package in Tangent-main, copying essential files..." && \
-        # Copy package.json, install.js and other key files
-        cp -r /repo/Tangent-main/apps/tangent-electron/node_modules/electron/package.json /repo/node_modules/electron/ && \
-        cp -r /repo/Tangent-main/apps/tangent-electron/node_modules/electron/index.js /repo/node_modules/electron/ && \
-        cp -r /repo/Tangent-main/apps/tangent-electron/node_modules/electron/install.js /repo/node_modules/electron/ && \
-        cp -r /repo/Tangent-main/apps/tangent-electron/node_modules/electron/path.txt /repo/node_modules/electron/ 2>/dev/null || true && \
-        # Link or copy the binary
-        if [ -f "/repo/Tangent-main/apps/tangent-electron/node_modules/electron/dist/electron" ]; then \
-            echo "Found Electron binary in Tangent-main, creating symlink..." && \
-            ln -sf /repo/Tangent-main/apps/tangent-electron/node_modules/electron/dist/electron /repo/node_modules/electron/dist/electron; \
-        fi; \
-    fi && \
-    # Look for any Electron binary if we haven't found one yet
-    if [ ! -f "/repo/node_modules/electron/dist/electron" ]; then \
-        echo "Searching for any Electron binary..." && \
-        ELECTRON_BIN=$(find /repo -name "electron" -type f | grep -v "node_modules/electron/dist" | head -1) && \
-        if [ -n "$ELECTRON_BIN" ]; then \
-            echo "Found Electron binary at $ELECTRON_BIN, copying..." && \
-            cp "$ELECTRON_BIN" /repo/node_modules/electron/dist/electron && \
-            chmod +x /repo/node_modules/electron/dist/electron; \
-        else \
-            echo "No Electron binary found anywhere!"; \
-            exit 1; \
-        fi; \
-    fi && \
-    # Verify the symlink was created
-    echo "Verifying Electron binary at expected location:" && \
-    ls -la /repo/node_modules/electron/dist/electron && \
-    echo "✅ Electron binary now available at expected location"
+    echo "✅ Electron post-install script executed via pnpm rebuild"
 
 ################################################################################
 # 3 · Detailed Electron verification
@@ -237,15 +182,12 @@ RUN set -euxo pipefail &&\
 # Set up symlinks and guaranteed paths if Electron binary exists
 RUN set -euxo pipefail &&\
     echo "Setting up Electron binary symlinks and guaranteed paths..." &&\
-    # real bundle now exists – link its binary
     ELECTRON_DIR=$(dirname $(dirname $(find /repo/node_modules \
-             -type f -name chrome-sandbox | head -n1))) && \
+               -type f -name chrome-sandbox | head -n1))) && \
     echo "Electron dir: $ELECTRON_DIR" && \
     mkdir -p /repo/bin && \
     ln -sf "$ELECTRON_DIR/electron" /repo/bin/electron && \
     chmod +x "$ELECTRON_DIR/electron" && \
-    # Save path for scripts
-    echo "$ELECTRON_DIR/electron" > /tmp/electron-binary-path.txt &&\
     echo "✅ Electron binary symlinks and guaranteed paths set up successfully"
 
 ################################################################################
