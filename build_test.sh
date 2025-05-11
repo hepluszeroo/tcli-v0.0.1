@@ -17,4 +17,8 @@ echo "=== Checking Electron version directly ==="
 docker run --rm tangent-codex-tests-local bash -c "echo 'Node version: ' \$(node -v) && echo 'Electron version: ' \$(/repo/bin/electron --version 2>/dev/null || echo 'Failed\!')"
 
 echo
-echo "If both checks passed, the Docker image should work in CI."
+echo "=== Listing Codex test files in the container ==="
+docker run --rm tangent-codex-tests-local bash -c "find /repo/Tangent-main/apps/tangent-electron/tests-integration -name 'codex_*.test.ts' | sort"
+
+echo
+echo "If all checks passed, the Docker image should work in CI."

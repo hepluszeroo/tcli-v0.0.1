@@ -57,14 +57,17 @@ jobs:
             # Run directly on macOS with file transport enabled
             cd Tangent-main/apps/tangent-electron
             echo "DEBUG: Running Playwright from $(pwd)"
-            echo "DEBUG: Using grep 'Codex' filter (project=Tests) for Playwright discovery"
+            echo "DEBUG: Using filename pattern for test discovery"
             ls -la tests-integration/
-            echo "Listing tests…"
-            pnpm exec playwright test --config=./playwright.config.ts --project Tests --grep Codex --list
+            echo "Showing all Codex test files:"
+            find tests-integration -name 'codex_*.test.ts' | sort
+
+            echo "Listing tests matched by filename pattern:"
+            pnpm exec playwright test --config=./playwright.config.ts --project Tests --test-match 'codex_.*\.test\.ts' --list
 
             echo "Running Codex tests…"
             DEBUG=pw:api,pw:test,codex,main,mock-codex INTEGRATION_TEST_USE_FILE_TRANSPORT=1 CODEX_DEBUG_TIMERS=1 DUMP_HANDLES=1 \
-            pnpm exec playwright test --config=./playwright.config.ts --project Tests --grep Codex --workers 1 --reporter=list --timeout=60000
+            pnpm exec playwright test --config=./playwright.config.ts --project Tests --test-match 'codex_.*\.test\.ts' --workers 1 --reporter=list --timeout=60000
           else
             # Run Docker container on Linux with Xvfb for display server
             set -euxo pipefail
