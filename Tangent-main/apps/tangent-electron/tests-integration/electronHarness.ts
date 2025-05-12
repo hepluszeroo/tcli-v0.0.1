@@ -153,6 +153,11 @@ export async function launchElectron(opts: {
   if (process.env.PLAYWRIGHT_IN_DOCKER === '1') {
     console.log('[electronHarness] Running in Docker container');
 
+    // CRITICAL FIX: Ensure the Electron process knows it's running in Docker
+    // This is used by stub_main.js to create windows hidden and prevent app exit
+    electronEnv.PLAYWRIGHT_IN_DOCKER = '1';  // Explicitly set to ensure it's passed to Electron
+    electronEnv.ELECTRON_DISABLE_SANDBOX = '1';  // Ensure sandbox is disabled regardless of command line flags
+
     // Verify workspace directory and settings in Docker
     try {
       const fs = require('fs');

@@ -562,13 +562,25 @@ app.whenReady().then(() => {
   debugLog('Creating browser window');
   
   win = new BrowserWindow({
-    show: true, // Required for Playwright visibility
+    show: !isDocker, // Hide window in Docker to prevent crash in headless environment
     width: 800,
     height: 600,
     backgroundThrottling: false,
-    webPreferences: { 
-      preload: path.resolve(__dirname, 'preload.js'), 
-      contextIsolation: true 
+    webPreferences: {
+      preload: path.resolve(__dirname, 'preload.js'),
+      contextIsolation: true
+    }
+  });
+
+  // CRITICAL FIX: Wait for ready-to-show to keep the main process alive in Docker
+  win.once('ready-to-show', () => {
+    debugLog('Window ready-to-show event fired');
+    // Only show window if not in Docker
+    if (!isDocker) {
+      win.show();
+      debugLog('Window shown (non-Docker environment)');
+    } else {
+      debugLog('Window ready but kept hidden (Docker environment)');
     }
   });
   
@@ -618,5 +630,14 @@ app.whenReady().then(() => {
 
 // Prevent app from exiting when all windows are closed
 app.on('window-all-closed', () => {
-  debugLog('window-all-closed event fired, preventing app exit');
+  debugLog('window-all-closed event fired');
+
+  // CRITICAL FIX: Never quit in Docker environment to keep the main process alive
+  // This ensures Playwright can properly connect and interact with Electron
+  if (!isDocker) {
+    debugLog('Non-Docker environment - allowing app to quit');
+    app.quit();
+  } else {
+    debugLog('Docker environment - preventing app exit to keep process alive for Playwright');
+  }
 });
