@@ -21,8 +21,26 @@ jobs:
           path: ~/.local/share/pnpm/store
           key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
 
+      # Build the Docker image that contains all Playwright test dependencies.
+      #
+      # IMPORTANT: We pass a CACHE_BUST build-arg derived from the current
+      # commit SHA so the CI runner never re-uses a stale cached layer that may
+      # pre-date the latest Electron installation fixes.  Without this the
+      # runner could use an older cached layer which is missing the manually
+      # downloaded Electron ELF binary, causing the subsequent verification
+      # step inside the container to report:
+      #   /repo/bin/electron: symbolic link to /repo/node_modules/electron/dist/electron
+      #   ❌ Electron binary is NOT an ELF executable!
+      #
+      # Using the SHA as a cache-buster guarantees that every CI run builds
+      # the layers that install the correct Electron binary and run the final
+      # verification checks we added in Dockerfile.playwright.
       - name: Build integration-test image
-        run: docker build --progress=plain -f Dockerfile.playwright -t tangent-tests .
+        run: |
+          docker build --no-cache --progress=plain \
+            --build-arg CACHE_BUST=${{ github.sha }} \
+            --build-arg STUB_HASH=${{ github.sha }} \
+            -f Dockerfile.playwright -t tangent-tests .
 
       - name: Run Playwright suite in container
         run: docker run --rm -e ELECTRON_DISABLE_SANDBOX=1 tangent-tests

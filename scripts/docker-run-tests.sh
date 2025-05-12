@@ -16,16 +16,38 @@ cd /repo/Tangent-main/apps/tangent-electron
 echo "Node  : $(node -v)"
 echo "PW    : $(pnpm dlx playwright@1.52.0 --version)"
 
-# 3. Run electron binary verification
+# ---------------------------------------------------------------------------
+# 3. Defensive check – ensure the real Electron ELF binary is still present.
+#    Some CI runners were observed to cache old layers which resulted in the
+#    project-installed Electron being just a stub text file (created when the
+#    postinstall download failed).  We copy the *known-good* binary that we
+#    embedded during the Docker build (stored under /repo/vendor) back into the
+#    node_modules location.  This is effectively a no-op when the binary is
+#    already correct, but guarantees that the subsequent verification step and
+#    the Playwright launcher will always see a valid ELF executable.
+# ---------------------------------------------------------------------------
+
+if [ -f "/repo/vendor/electron/dist/electron" ]; then
+  echo "Ensuring /repo/bin/electron points to the real ELF binary…"
+  # Re-copy the binary in case the node_modules file was overwritten by a stub
+  mkdir -p /repo/node_modules/electron/dist || true
+  cp -f /repo/vendor/electron/dist/electron /repo/node_modules/electron/dist/electron
+  chmod +x /repo/node_modules/electron/dist/electron
+  ln -sf /repo/node_modules/electron/dist/electron /repo/bin/electron
+else
+  echo "WARNING: /repo/vendor/electron/dist/electron missing – this should never happen"
+fi
+
+# 4. Run electron binary verification (fails fast if the binary is still wrong)
 echo '=== Running Electron binary verification ==='
 /repo/verify_electron.sh
 
-# 4. List tests (fail fast if none)
+# 5. List tests (fail fast if none)
 xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' \
   pnpm exec playwright test \
     --config=playwright.config.ts --project Tests --grep Codex --list
 
-# 5. Run the suite
+# 6. Run the suite
 DEBUG=pw:api,pw:test,codex,main,mock-codex \
 xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' \
   pnpm exec playwright test \
