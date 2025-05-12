@@ -65,7 +65,7 @@ jobs:
       - name: Build Docker image (fresh)
         if: runner.os == 'Linux'
         run: |
-          docker build --no-cache \
+          docker build --platform linux/amd64 --no-cache \
             --build-arg CACHE_BUST=${{ github.sha }} \
             --build-arg STUB_HASH=${{ github.sha }} \
             -f Dockerfile.playwright -t tangent-codex-tests .
@@ -96,7 +96,7 @@ jobs:
             echo "::endgroup::"
 
             # ⬇️ all commands echoed because of 'set -x'
-            docker run --rm \
+            docker run --platform linux/amd64 --rm \
               -e PLAYWRIGHT_IN_DOCKER=1 \
               -e DEBUG=codex \
               -e CODEX_DEBUG_TIMERS=1 \
