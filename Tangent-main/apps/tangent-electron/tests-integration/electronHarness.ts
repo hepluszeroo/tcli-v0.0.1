@@ -463,7 +463,8 @@ export async function launchElectron(opts: {
         // Inherit stdio so Playwright can read Electron's stderr line that
         // contains the DevTools port; without it `_electron.launch()` thinks
         // the process never started and throws "Process failed to launch!".
-        stdio: 'inherit'
+        stdio: 'inherit',
+        dumpio: true        // stream Electron stdout/stderr to parent so CI log shows crash reason
       };
 
       // Use the direct path to Electron binary in Docker, or the CLI script elsewhere
