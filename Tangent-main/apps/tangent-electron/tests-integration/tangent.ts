@@ -103,15 +103,21 @@ function getElectronExec(): string {
 
   // In Docker environment, point Playwright at the npm Electron CLI wrapper.
   if (process.env.PLAYWRIGHT_IN_DOCKER === '1') {
-    // In Docker we now rely on the official electron CLI wrapper which will
-    // resolve to <project>/node_modules/electron/dist/electron.  During the
-    // Docker build we copy the real ELF into that location so the wrapper no
-    // longer points at a stub.  This avoids any issues with pnpm rewriting
-    // /repo/bin/electron symlinks at container start-up.
+    // In Docker prefer the *real executable* shipped inside the electron
+    // package (…/dist/electron).  We still resolve the JS wrapper first and
+    // then rewrite it to the sibling binary so the logic also works when the
+    // package layout changes subtly between versions.
 
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const cliPath = require.resolve('electron/cli.js');
-    console.log('[tangent.ts] Docker environment detected. Using electron CLI:', cliPath);
+    const distPath = path.resolve(path.dirname(cliPath), 'dist', 'electron');
+
+    if (fs.existsSync(distPath)) {
+      console.log('[tangent.ts] Docker environment: resolved electron binary:', distPath);
+      return distPath;
+    }
+
+    console.warn('[tangent.ts] Docker environment: dist/electron not found, falling back to CLI wrapper – electronHarness will attempt rewrite');
     return cliPath;
   }
 

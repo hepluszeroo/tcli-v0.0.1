@@ -490,9 +490,35 @@ export async function launchElectron(opts: {
       // we are running inside a Docker container, we still honour it – the
       // Docker image is built such that the path is guaranteed to be valid.
 
-      if (process.env.PLAYWRIGHT_IN_DOCKER === '1' && fsExists(opts.electronBinary)) {
-        launchOptions.executablePath = opts.electronBinary;
-        console.log(`[electronHarness] Docker environment: using provided binary: ${opts.electronBinary}`);
+      if (process.env.PLAYWRIGHT_IN_DOCKER === '1' && typeof opts.electronBinary === 'string' && fsExists(opts.electronBinary)) {
+        let binaryPath = opts.electronBinary;
+
+        // -----------------------------------------------------------------
+        // Guard-rail: tests sometimes hand us the *JS CLI wrapper* that lives
+        // at  …/node_modules/electron/cli.js.  Playwright requires the real
+        // executable (ELF/Mach-O) from  …/node_modules/electron/dist/electron.
+        // If we detect the wrapper path we automatically rewrite it to point
+        // at the sibling binary.  This prevents the classic opaque
+        // "electron.launch: Process failed to launch!" error that arises when
+        // Playwright tries to exec the wrapper under a stripped-down PATH.
+        // -----------------------------------------------------------------
+
+        if (binaryPath.endsWith(path.join('electron', 'cli.js'))) {
+          const candidate = path.resolve(path.dirname(binaryPath), 'dist', 'electron');
+          if (fsExists(candidate)) {
+            console.log('[electronHarness] Detected CLI wrapper – rewriting executablePath ->', candidate);
+            binaryPath = candidate;
+          } else {
+            console.warn('[electronHarness] Provided path is cli.js but no dist/electron sibling exists – falling back to Playwright default');
+          }
+        }
+
+        if (fsExists(binaryPath)) {
+          launchOptions.executablePath = binaryPath;
+          console.log(`[electronHarness] Docker environment: using executable binary: ${binaryPath}`);
+        } else {
+          console.warn('[electronHarness] Intended Electron binary does not exist – falling back to Playwright default');
+        }
       } else {
         console.log('[electronHarness] executablePath not specified – using Playwright-bundled Electron');
       }
