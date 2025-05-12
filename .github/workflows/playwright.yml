@@ -53,10 +53,13 @@ jobs:
             tangent-tests \
             bash -c "set -e; \
                file -L /repo/vendor/electron/dist/electron; \
-               /repo/node_modules/.pnpm/electron@35.2.1/node_modules/electron/cli.js --no-sandbox --version"
+               /repo/vendor/electron/dist/electron --no-sandbox --version"
 
       - name: Run Playwright suite in container
-        run: docker run --rm -e ELECTRON_DISABLE_SANDBOX=1 tangent-tests
+        run: docker run --rm \
+          -e ELECTRON_OVERRIDE_DIST_PATH=/repo/vendor/electron/dist/electron \
+          -e ELECTRON_DISABLE_SANDBOX=1 \
+          tangent-tests
 
       - name: Upload Playwright report (always)
         if: always()
