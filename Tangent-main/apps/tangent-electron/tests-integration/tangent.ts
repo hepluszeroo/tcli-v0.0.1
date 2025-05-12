@@ -103,14 +103,16 @@ function getElectronExec(): string {
 
   // In Docker environment, point Playwright at the npm Electron CLI wrapper.
   if (process.env.PLAYWRIGHT_IN_DOCKER === '1') {
-    // Inside the CI Docker container we *guarantee* a real ELF binary lives at
-    // /repo/bin/electron.  Using it directly avoids the electron/cli.js wrapper
-    // which spawns a secondary process **without** the --no-sandbox flag and
-    // therefore crashes with the "SUID sandbox helper binary" fatal error.
+    // In Docker we now rely on the official electron CLI wrapper which will
+    // resolve to <project>/node_modules/electron/dist/electron.  During the
+    // Docker build we copy the real ELF into that location so the wrapper no
+    // longer points at a stub.  This avoids any issues with pnpm rewriting
+    // /repo/bin/electron symlinks at container start-up.
 
-    const binPath = '/repo/bin/electron';
-    console.log('[tangent.ts] Docker environment detected. Using hard-wired binary:', binPath);
-    return binPath;
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const cliPath = require.resolve('electron/cli.js');
+    console.log('[tangent.ts] Docker environment detected. Using electron CLI:', cliPath);
+    return cliPath;
   }
 
   // UPDATED: We no longer use executablePath() as it doesn't exist in Playwright 1.52

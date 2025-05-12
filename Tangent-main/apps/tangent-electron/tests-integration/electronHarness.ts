@@ -468,15 +468,22 @@ export async function launchElectron(opts: {
 
       // Use the direct path to Electron binary in Docker, or the CLI script elsewhere
       if (process.env.PLAYWRIGHT_IN_DOCKER === '1') {
-        // In Docker, directly use the symlink we've carefully maintained
-        launchOptions.executablePath = '/repo/bin/electron';
-        console.log(`[electronHarness] Docker environment: Using direct binary path: ${launchOptions.executablePath}`);
+        // Inside the CI container we let Playwright launch via the official
+        // electron CLI wrapper.  During the Docker build the real ELF was
+        // copied into node_modules/electron/dist/electron, so the wrapper now
+        // resolves to the correct binary.
+        try {
+          const cliPath = require.resolve('electron/cli.js');
+          launchOptions.executablePath = cliPath;
+          console.log(`[electronHarness] Docker environment: Using CLI wrapper: ${cliPath}`);
+        } catch (err) {
+          console.error('[electronHarness] FATAL: electron/cli.js not resolvable inside Docker');
+          throw err;
+        }
 
-        // CRITICAL FIX: Remove ELECTRON_RUN_AS_NODE right before launch in Docker
-        // This prevents the renderer process from inheriting this variable
+        // Ensure ELECTRON_RUN_AS_NODE does not leak
         if ('ELECTRON_RUN_AS_NODE' in electronEnv) {
           delete electronEnv.ELECTRON_RUN_AS_NODE;
-          console.log('[electronHarness] 🔴 CRITICAL FIX: Removed ELECTRON_RUN_AS_NODE just before launch');
         }
       } else {
         // In non-Docker environments, use the CLI script
