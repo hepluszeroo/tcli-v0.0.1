@@ -130,43 +130,34 @@ RUN set -euxo pipefail && \
     fi && \
     echo "✅ Using correct Node.js version ($NODE_VER) for Electron 35 compatibility"
 
-# Directly execute the first Electron installer we can find in the repo with enhanced diagnostics
+# Download Electron directly from GitHub releases
 RUN set -euxo pipefail && \
-    echo "🔍 Looking for electron/install.js ..." && \
-    find /repo -path "*/node_modules/electron" -type d && \
-    find /repo -path "*/node_modules/electron/install.js" && \
-    ELECTRON_INSTALL=$(find /repo -path "*/node_modules/electron/install.js" | head -n 1) && \
-    if [ -z "$ELECTRON_INSTALL" ]; then \
-       echo "❌   install.js not found anywhere → abort" && exit 1 ;\
-    fi && \
-    ELECTRON_DIR=$(dirname "$ELECTRON_INSTALL") && \
-    echo "⚙️  Found electron at: $ELECTRON_DIR" && \
-    echo "⚙️  Running installer from directory: $ELECTRON_DIR" && \
-    cd "$ELECTRON_DIR" && \
-    export ELECTRON_SKIP_BINARY_DOWNLOAD=0 && \
-    # Use writable scratch directory to work around read-only pnpm store during Docker build
-    export ELECTRON_OVERRIDE_DIST_PATH=/tmp/electron-bin && \
-    echo "👉 CWD: $(pwd)" && \
-    echo "👉 Path: $PATH" && \
+    echo "🔍 Bypassing Electron installer to download binary directly from GitHub" && \
+    echo "👉 Checking docker environment..." && \
+    df -h && \
     NODE_VER=$(node --version) && \
     echo "👉 Node version: $NODE_VER" && \
     if [[ "$NODE_VER" != v20.* ]]; then \
         echo "❌ WRONG VERSION: Node.js 20.x required for Electron 35 compatibility, but got $NODE_VER" && \
-        echo "💡 This will likely cause the Electron install to fail." && \
         exit 1; \
     else \
         echo "✅ Using compatible Node.js version"; \
     fi && \
-    echo "Running Electron installer with NODE_VER=$NODE_VER (using writable scratch dir)" && \
-    node install.js && \
-    # Verify installer succeeded in tmp
-    test -x /tmp/electron-bin/electron \
-        || (echo "❌ Electron installer did not write binary"; exit 1) && \
-    echo "✅ Electron binary was installed to temporary directory" && \
-    # Copy to a writable location inside the repo (not into the read-only pnpm store)
+    # Create directories for Electron binary
     mkdir -p /repo/vendor/electron/dist && \
-    cp -r /tmp/electron-bin/* /repo/vendor/electron/dist/ && \
-    echo "✅ Copied Electron binaries to /repo/vendor/electron/dist/" && \
+    chmod 755 /repo/vendor/electron/dist && \
+    # Download Electron binary directly from GitHub
+    echo "Downloading Electron v35.2.1 directly from GitHub..." && \
+    cd /tmp && \
+    curl -L --fail --silent --show-error -o electron.zip "https://github.com/electron/electron/releases/download/v35.2.1/electron-v35.2.1-linux-x64.zip" && \
+    echo "✅ Download completed successfully" && \
+    echo "Extracting Electron binary..." && \
+    unzip -o electron.zip -d /repo/vendor/electron/dist && \
+    chmod +x /repo/vendor/electron/dist/electron && \
+    echo "✅ Electron binary extracted to /repo/vendor/electron/dist" && \
+    # Verify the binary is there and is indeed an executable
+    ls -la /repo/vendor/electron/dist && \
+    file /repo/vendor/electron/dist/electron && \
     # Create the universal symlink we already rely on
     mkdir -p /repo/bin && \
     ln -sf /repo/vendor/electron/dist/electron /repo/bin/electron && \
