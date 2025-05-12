@@ -31,8 +31,13 @@ export async function launchElectron(opts: {
   // Special environment variables for Electron
   const electronEnv = {
     ...env,
+    // Always enable verbose logging so Playwright can detect the
+    // "DevTools listening on ws://…" line it needs to attach.
     ELECTRON_ENABLE_LOGGING: '1',
-    // IMPORTANT: Disable sandbox but DON'T set ELECTRON_RUN_AS_NODE
+    ELECTRON_ENABLE_STACK_DUMPING: '1',
+    // IMPORTANT: Disable sandbox but DON'T set ELECTRON_RUN_AS_NODE – we
+    // explicitly strip that variable right before launch to avoid the
+    // renderer running as a Node process.
     ELECTRON_DISABLE_SANDBOX: '1'
   }
 
@@ -152,6 +157,11 @@ export async function launchElectron(opts: {
   // Additional Docker environment variables
   if (process.env.PLAYWRIGHT_IN_DOCKER === '1') {
     console.log('[electronHarness] Running in Docker container');
+
+    // CRITICAL FIX: Ensure the Electron process knows it's running in Docker
+    // This is used by stub_main.js to create windows hidden and prevent app exit
+    electronEnv.PLAYWRIGHT_IN_DOCKER = '1';  // Explicitly set to ensure it's passed to Electron
+    electronEnv.ELECTRON_DISABLE_SANDBOX = '1';  // Ensure sandbox is disabled regardless of command line flags
 
     // Verify workspace directory and settings in Docker
     try {
@@ -438,19 +448,61 @@ export async function launchElectron(opts: {
       console.log(`[electronHarness] Using launch timeout: ${launchTimeout}ms`);
 
       // STEP 4: Let Playwright choose the binary automatically
+      // CRITICAL FIX: Remove ELECTRON_RUN_AS_NODE completely from environment
+      // This needs to happen right before launch to ensure it's not inherited by any process
+      if ('ELECTRON_RUN_AS_NODE' in electronEnv) {
+        delete electronEnv.ELECTRON_RUN_AS_NODE;
+        console.log('[electronHarness] 🔴 CRITICAL FIX: Deleted ELECTRON_RUN_AS_NODE from environment before launch');
+      }
+
       const launchOptions: any = {
         cwd: actualBuildDir,
         args: finalArgs,
         env: electronEnv,
-        timeout: launchTimeout
+        timeout: launchTimeout,
+        // Inherit stdio so Playwright can read Electron's stderr line that
+        // contains the DevTools port; without it `_electron.launch()` thinks
+        // the process never started and throws "Process failed to launch!".
+        stdio: 'inherit',
+        dumpio: true        // stream Electron stdout/stderr to parent so CI log shows crash reason
       };
 
-      // Only include executablePath if a binary is explicitly provided
-      if (opts.electronBinary) {
-        launchOptions.executablePath = opts.electronBinary;
-        console.log(`[electronHarness] Using provided binary: ${opts.electronBinary}`);
+      // Use the direct path to Electron binary in Docker, or the CLI script elsewhere
+      if (process.env.PLAYWRIGHT_IN_DOCKER === '1') {
+        // Inside the CI container we let Playwright launch via the official
+        // electron CLI wrapper.  During the Docker build the real ELF was
+        // copied into node_modules/electron/dist/electron, so the wrapper now
+        // resolves to the correct binary.
+        try {
+          const cliPath = require.resolve('electron/cli.js');
+          launchOptions.executablePath = cliPath;
+          console.log(`[electronHarness] Docker environment: Using CLI wrapper: ${cliPath}`);
+        } catch (err) {
+          console.error('[electronHarness] FATAL: electron/cli.js not resolvable inside Docker');
+          throw err;
+        }
+
+        // Ensure ELECTRON_RUN_AS_NODE does not leak
+        if ('ELECTRON_RUN_AS_NODE' in electronEnv) {
+          delete electronEnv.ELECTRON_RUN_AS_NODE;
+        }
       } else {
-        console.log(`[electronHarness] Using Playwright's bundled Electron (no executablePath specified)`);
+        // In non-Docker environments, use the CLI script
+        try {
+          // Try to find the Electron CLI script
+          const cliPath = require.resolve('electron/cli.js');
+          launchOptions.executablePath = cliPath;
+          console.log(`[electronHarness] Using Electron CLI script: ${cliPath}`);
+        } catch (e) {
+          console.log(`[electronHarness] Could not find Electron CLI script: ${e}`);
+          // Fall back to the provided binary if the CLI script isn't found
+          if (opts.electronBinary) {
+            launchOptions.executablePath = opts.electronBinary;
+            console.log(`[electronHarness] Falling back to provided binary: ${opts.electronBinary}`);
+          } else {
+            console.log(`[electronHarness] Using Playwright's bundled Electron (no executablePath specified)`);
+          }
+        }
       }
 
       const app = await _electron.launch(launchOptions);

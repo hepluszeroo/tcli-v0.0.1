@@ -24,6 +24,9 @@ jobs:
       DEBUG: codex
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0       # ensure full history
+          ref: ${{ github.ref }}   # checkout exactly the branch that triggered the run
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
@@ -43,13 +46,37 @@ jobs:
       - name: Build E2E bundle
         run: pnpm --filter tangent_electron run build:test-e2e
 
+      - name: Verify Dockerfile contents
+        if: runner.os == 'Linux'
+        run: |
+          echo "### Current branch and commit:"
+          echo "GITHUB_SHA: $GITHUB_SHA"
+          echo "Local HEAD: $(git rev-parse HEAD)"
+
+          echo "### Digest of Dockerfile.playwright about to be built:"
+          sha1sum Dockerfile.playwright | tee /tmp/dockerfile.sha
+
+          echo "### First 40 lines of Dockerfile (looking for ELECTRON_OVERRIDE_DIST_PATH):"
+          head -n 40 Dockerfile.playwright | grep -n "ELECTRON_OVERRIDE_DIST_PATH" || echo "NOT FOUND - wrong file!"
+
+          echo "### Search for vendor electron path logic:"
+          grep -n "vendor/electron" Dockerfile.playwright || echo "NOT FOUND - wrong file!"
+
       - name: Build Docker image (fresh)
         if: runner.os == 'Linux'
         run: |
-          docker build --no-cache \
+          docker build --platform linux/amd64 --no-cache \
             --build-arg CACHE_BUST=${{ github.sha }} \
             --build-arg STUB_HASH=${{ github.sha }} \
             -f Dockerfile.playwright -t tangent-codex-tests .
+
+      - name: Sanity-check Electron in built image
+        if: runner.os == 'Linux'
+        run: |
+          docker run --platform linux/amd64 --rm tangent-codex-tests \
+            bash -c "
+              set -e; file -L /repo/bin/electron;
+              /repo/bin/electron --version"
 
       - name: Run quick Codex suite
         run: |
@@ -57,9 +84,12 @@ jobs:
             # Run directly on macOS with file transport enabled
             cd Tangent-main/apps/tangent-electron
             echo "DEBUG: Running Playwright from $(pwd)"
-            echo "DEBUG: Using grep 'Codex' filter (project=Tests) for Playwright discovery"
+            echo "DEBUG: Using filename pattern for test discovery"
             ls -la tests-integration/
-            echo "Listing tests…"
+            echo "Showing all Codex test files:"
+            find tests-integration -name 'codex_*.test.ts' | sort
+
+            echo "Listing tests matched by filename pattern:"
             pnpm exec playwright test --config=./playwright.config.ts --project Tests --grep Codex --list
 
             echo "Running Codex tests…"
@@ -74,7 +104,7 @@ jobs:
             echo "::endgroup::"
 
             # ⬇️ all commands echoed because of 'set -x'
-            docker run --rm \
+            docker run --platform linux/amd64 --rm \
               -e PLAYWRIGHT_IN_DOCKER=1 \
               -e DEBUG=codex \
               -e CODEX_DEBUG_TIMERS=1 \
@@ -94,11 +124,20 @@ jobs:
                          exit 1; \
                        fi; \
                        echo \"✅ Runtime verification passed: Node \$(node -v), Electron \$(/repo/bin/electron --version 2>/dev/null)\"; \
-                       xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' \
-                         pnpm exec playwright test --config=playwright.config.ts \
-                         --project Tests --grep Codex --list; \
-                       DEBUG=pw:api,pw:test,codex,main,mock-codex \
-                         xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' \
-                         pnpm exec playwright test --config=playwright.config.ts \
-                         --project Tests --grep Codex --workers 1 --reporter=list --timeout=60000"
+                       # List all test files to verify their presence
+                       find /repo/Tangent-main/apps/tangent-electron/tests-integration -name 'codex_*.test.ts' | sort; \
+                       # Verify display server is running
+                       echo \"DISPLAY=\$DISPLAY\" && \
+                       xdpyinfo >/dev/null 2>&1 && echo \"✅ X server is running\" || echo \"❌ X server is NOT running\" && \
+                       # Check Electron architecture and version
+                       echo \"Electron runtime arch: \$(/repo/bin/electron --version || echo FAILED)\" && \
+                       # List tests matched by filename pattern instead of grep
+               xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' \
+                 pnpm exec playwright test --config=playwright.config.ts \
+                 --project Tests --grep Codex --list; \
+                       # Run tests by filename pattern instead of grep to ensure all Codex tests run
+                       DEBUG=pw:api,pw:test,codex,main,mock-codex,electron:* \
+                 xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' \
+                 pnpm exec playwright test --config=playwright.config.ts \
+                 --project Tests --grep Codex --workers 1 --reporter=list --timeout=60000"
           fi
