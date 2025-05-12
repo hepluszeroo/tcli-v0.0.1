@@ -30,10 +30,20 @@ echo "PW    : $(pnpm dlx playwright@1.52.0 --version)"
 if [ -f "/repo/vendor/electron/dist/electron" ]; then
   echo "Ensuring /repo/bin/electron points to the real ELF binary…"
   # Re-copy the binary in case the node_modules file was overwritten by a stub
-  mkdir -p /repo/node_modules/electron/dist || true
-  cp -f /repo/vendor/electron/dist/electron /repo/node_modules/electron/dist/electron
-  chmod +x /repo/node_modules/electron/dist/electron
-  ln -sf /repo/node_modules/electron/dist/electron /repo/bin/electron
+  # Copy the real binary into *every* electron/dist directory we can find in
+  # the current project – pnpm creates versioned paths under
+  #   node_modules/.pnpm/electron@35.2.1/node_modules/electron/dist
+  # and a symlink at   node_modules/electron → ../../.pnpm/…/electron
+  # We iterate through all matches to avoid subtle cache / symlink issues.
+  while IFS= read -r -d '' distDir; do
+    echo "Installing real Electron binary into $distDir"
+    mkdir -p "$distDir" || true
+    cp -f /repo/vendor/electron/dist/electron "$distDir/electron"
+    chmod +x "$distDir/electron"
+  done < <(find /repo/node_modules -path "*/electron/dist" -type d -print0)
+
+  # Symlink for convenience
+  ln -sf /repo/vendor/electron/dist/electron /repo/bin/electron
 else
   echo "WARNING: /repo/vendor/electron/dist/electron missing – this should never happen"
 fi
