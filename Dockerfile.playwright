@@ -159,27 +159,30 @@ RUN set -euxo pipefail && \
     fi && \
     echo "Running Electron installer with NODE_VER=$NODE_VER (using writable scratch dir)" && \
     node install.js && \
-    # Move from writable scratch dir to module path
-    mkdir -p "$ELECTRON_DIR" && \
-    mv /tmp/electron-bin "$ELECTRON_DIR/dist" && \
-    test -x "$ELECTRON_DIR/dist/electron" || (echo "❌ Electron binary missing after install"; exit 1) && \
-    echo "✅ Electron install script finished. Checking for binary..." && \
-    ls -la "$ELECTRON_DIR/dist" || echo "⚠️ dist directory not found" && \
-    if [ -f "$ELECTRON_DIR/dist/electron" ]; then \
-        echo "✅ Electron binary exists at $ELECTRON_DIR/dist/electron" && \
-        chmod +x "$ELECTRON_DIR/dist/electron"; \
-    else \
-        echo "❌ Electron binary not found at expected location" && \
-        exit 1; \
-    fi && \
-    # Verify the binary is actually an ELF executable
-    if file "$ELECTRON_DIR/dist/electron" | grep -q "ELF 64-bit LSB executable"; then \
-        echo "✅ Electron binary is a proper ELF executable"; \
-    else \
-        echo "❌ Electron binary is NOT an ELF executable! Got: $(file "$ELECTRON_DIR/dist/electron")" && \
-        echo "This suggests the Electron installation failed to download the actual binary." && \
-        exit 1; \
-    fi
+    # Verify installer succeeded in tmp
+    test -x /tmp/electron-bin/electron \
+        || (echo "❌ Electron installer did not write binary"; exit 1) && \
+    echo "✅ Electron binary was installed to temporary directory" && \
+    # Copy to a writable location inside the repo (not into the read-only pnpm store)
+    mkdir -p /repo/vendor/electron/dist && \
+    cp -r /tmp/electron-bin/* /repo/vendor/electron/dist/ && \
+    echo "✅ Copied Electron binaries to /repo/vendor/electron/dist/" && \
+    # Create the universal symlink we already rely on
+    mkdir -p /repo/bin && \
+    ln -sf /repo/vendor/electron/dist/electron /repo/bin/electron && \
+    echo "✅ Created symlink at /repo/bin/electron -> /repo/vendor/electron/dist/electron" && \
+    # Final sanity check
+    test -x /repo/bin/electron \
+        || (echo "❌ Electron binary missing after copy"; exit 1) && \
+    file /repo/bin/electron | grep -q 'ELF 64-bit' \
+        || (echo "❌ Binary exists but is not an ELF executable"; exit 1) && \
+    echo "✅ Electron install script finished successfully" && \
+    echo "Verifying Electron binary location and type:" && \
+    echo "- Temporary location: $(file /tmp/electron-bin/electron)" && \
+    echo "- Vendor location: $(file /repo/vendor/electron/dist/electron)" && \
+    echo "- Symlink location: $(file /repo/bin/electron)" && \
+    chmod +x /repo/vendor/electron/dist/electron && \
+    echo "✅ Full Electron installation complete and verified"
 
 # Run a diagnostic search before the actual check
 RUN set -euxo pipefail && \
@@ -188,54 +191,41 @@ RUN set -euxo pipefail && \
     find /repo -name electron -type f || echo "No electron binaries found" && \
     find /repo -path "*/electron/dist" || echo "No electron/dist directories found"
 
-# Verify that Electron binary exists - no fallback, we rely on the earlier installation step
+# Verify the vendor Electron installation and symlinks
 RUN set -exo pipefail && \
-    ELECTRON_DIR=$(find /repo -path "*/node_modules/electron" -type d | head -n 1) && \
-    if [ -z "$ELECTRON_DIR" ]; then \
-        echo "❌ Could not find any electron directory" && exit 1; \
-    fi && \
-    if [ -f "$ELECTRON_DIR/dist/electron" ]; then \
-        echo "✅ Found Electron binary at $ELECTRON_DIR/dist/electron"; \
+    echo "🔍 Verifying Electron installation paths" && \
+    if [ -x "/repo/vendor/electron/dist/electron" ]; then \
+        echo "✅ Found Electron binary at /repo/vendor/electron/dist/electron"; \
     else \
-        echo "❌ Electron binary not found at $ELECTRON_DIR/dist/electron" && \
-        echo "Earlier installation step failed to produce a binary." && \
-        exit 1; \
-    fi
-
-# Create the helper path after the guard with more robust binary finder
-RUN set -euxo pipefail && \
-    echo "🔍 Searching for Electron binary in repository..." && \
-    # The actual electron binary is in the dist subdirectory, not directly in the electron directory
-    ELECTRON_BINARY=$(find /repo -path "*/node_modules/electron/dist/electron" -type f | head -n 1) && \
-    if [ -z "$ELECTRON_BINARY" ]; then \
-        echo "❌ Could not find electron binary. Showing all electron-related folders:" && \
-        find /repo -path "*/electron*" -type d | sort && \
-        find /repo -name "electron" -type f | sort && \
-        echo "Showing all directories under pnpm store:" && \
-        find /repo/node_modules/.pnpm -type d -maxdepth 3 | grep electron && \
-        echo "Failed to find Electron binary - cannot create symlink" && exit 1; \
+        echo "❌ Vendor Electron binary not found or not executable" && exit 1; \
     fi && \
-    echo "📍 Found electron binary at: $ELECTRON_BINARY" && \
-    # Make sure the binary is executable
-    chmod +x "$ELECTRON_BINARY" && \
-    # Create symlink
-    mkdir -p /repo/bin && \
-    ln -sf "$ELECTRON_BINARY" /repo/bin/electron && \
-    echo "✅ Electron symlink created successfully from $ELECTRON_BINARY to /repo/bin/electron" && \
-    # Verify the symlink works
-    if [ -L "/repo/bin/electron" ]; then \
+    if [ -L "/repo/bin/electron" ] && [ -x "/repo/bin/electron" ]; then \
         TARGET=$(readlink -f /repo/bin/electron) && \
-        echo "🔍 Symlink points to: $TARGET"; \
+        echo "✅ Symlink /repo/bin/electron points to $TARGET and is executable"; \
+    else \
+        echo "❌ Symlink /repo/bin/electron is missing or broken" && exit 1; \
     fi && \
+    /repo/bin/electron --version || echo "Version check failed (expected in headless env - this is not an error)"
+
+# Additional verification of the existing Electron binary and symlink
+RUN set -euxo pipefail && \
+    echo "🔍 Final verification of Electron binary and symlinks" && \
+    # Verify binary exists and is executable
+    test -x /repo/bin/electron || (echo "❌ /repo/bin/electron is not executable" && exit 1) && \
+    # Show the symlink target
+    echo "🔍 Symlink /repo/bin/electron points to: $(readlink -f /repo/bin/electron)" && \
+    # Show file details and permissions
     ls -la /repo/bin/electron && \
+    ls -la /repo/vendor/electron/dist/electron && \
     # Verify that the Electron binary is actually an executable file, not just a JS wrapper
-    if file "$ELECTRON_BINARY" | grep -q "ELF 64-bit LSB executable"; then \
+    if file /repo/bin/electron | grep -q "ELF 64-bit LSB executable"; then \
         echo "✅ Electron binary is a proper ELF executable"; \
     else \
-        echo "❌ Electron binary is NOT an ELF executable! Got: $(file "$ELECTRON_BINARY")" && \
+        echo "❌ Electron binary is NOT an ELF executable! Got: $(file /repo/bin/electron)" && \
         echo "This suggests the Electron installation failed to download the actual binary." && \
         exit 1; \
-    fi
+    fi && \
+    echo "✅ All Electron binary verifications passed"
 
 ################################################################################
 # 3 · Detailed Electron verification
