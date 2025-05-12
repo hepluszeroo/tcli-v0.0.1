@@ -549,16 +549,33 @@ RUN set -euxo pipefail && \
     fi && \
     echo "✅ FINAL VERIFICATION PASSED - Electron binary is ready for Playwright"
 
-# ----------------------------------------------------------------------------
-# FINAL Electron fix-up – LAST layer before CMD / ENTRYPOINT
-# Nothing after this can overwrite the files
-# ----------------------------------------------------------------------------
-RUN set -euxo pipefail && \
-    echo "🔗 Overwriting npm wrapper with real ELF" && \
-    cp /repo/vendor/electron/dist/electron /repo/node_modules/electron/dist/electron && \
-    chmod +x /repo/node_modules/electron/dist/electron && \
+# ------------------------------------------------------------------
+# 10 · FINAL stub copy – guarantees the very latest stub_main.js is
+#     the file Electron actually loads, regardless of earlier layers.
+#     This layer is rebuilt every time stub_main.js changes, even if
+#     subsequent layers are cached.
+# ------------------------------------------------------------------
+
+COPY Tangent-main/apps/tangent-electron/scripts/stub_main.js\
+     Tangent-main/apps/tangent-electron/__build/bundle/main.js
+
+# -----------------------------------------------------------------
+# 11 · FINAL — ABSOLUTELY NOTHING MAY FOLLOW THIS (except ARGs)
+# -----------------------------------------------------------------
+RUN set -eux; \
+    # 1. make sure the target dir exists even if pnpm hoisted it elsewhere
+    mkdir -p /repo/node_modules/electron/dist && \
+    # 2. copy the real ELF everywhere we can think of
+    for d in $(find /repo/node_modules -path '*/electron/dist' -type d); do \
+        echo "→ installing real binary into $d"; \
+        cp -f /repo/vendor/electron/dist/electron "$d/electron"; \
+        chmod +x "$d/electron"; \
+    done && \
+    # 3. authoritative symlink used by scripts/debugging
     ln -sf /repo/vendor/electron/dist/electron /repo/bin/electron && \
-    file -L /repo/bin/electron
+    # 4. prove it worked
+    file -L /repo/bin/electron && \
+    /repo/bin/electron --version
 
 # Use the script as the entry point
 CMD ["/repo/scripts/docker-run-tests.sh"]
@@ -569,13 +586,3 @@ CMD ["/repo/scripts/docker-run-tests.sh"]
 ARG STUB_HASH=dev
 # Additional cache-buster to force rebuild on every CI run
 ARG CACHE_BUST=0
-
-# ------------------------------------------------------------------
-# 10 · FINAL stub copy – guarantees the very latest stub_main.js is
-#     the file Electron actually loads, regardless of earlier layers.
-#     This layer is rebuilt every time stub_main.js changes, even if
-#     subsequent layers are cached.
-# ------------------------------------------------------------------
-
-COPY Tangent-main/apps/tangent-electron/scripts/stub_main.js\
-     Tangent-main/apps/tangent-electron/__build/bundle/main.js

@@ -70,6 +70,14 @@ jobs:
             --build-arg STUB_HASH=${{ github.sha }} \
             -f Dockerfile.playwright -t tangent-codex-tests .
 
+      - name: Sanity-check Electron in built image
+        if: runner.os == 'Linux'
+        run: |
+          docker run --platform linux/amd64 --rm tangent-codex-tests \
+            bash -c "
+              set -e; file -L /repo/bin/electron;
+              /repo/bin/electron --version"
+
       - name: Run quick Codex suite
         run: |
           if [ "$RUNNER_OS" == "macOS" ]; then

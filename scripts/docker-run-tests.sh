@@ -52,14 +52,32 @@ fi
 echo '=== Running Electron binary verification ==='
 /repo/verify_electron.sh
 
-# 5. List tests (fail fast if none)
-xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' \
-  pnpm exec playwright test \
-    --config=playwright.config.ts --project Tests --grep Codex --list
+# Start Xvfb display server and export DISPLAY properly
+echo "Starting Xvfb display server..."
+Xvfb :99 -screen 0 1280x720x24 -ac &
+export DISPLAY=:99
+sleep 2
 
-# 6. Run the suite
-DEBUG=pw:api,pw:test,codex,main,mock-codex \
-xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' \
+# Verify display server is working
+echo "Verifying Xvfb is running:"
+if xdpyinfo >/dev/null; then
+  echo "✅ X server is running"
+else
+  echo "❌ X server is NOT running"
+  # Don't abort, try to continue anyway
+fi
+
+# 5. Quick manual Electron launch test to verify it works in headless mode
+echo "=== Quick manual launch ==="
+/repo/bin/electron --no-sandbox --disable-gpu --version
+
+# 6. List tests (fail fast if none)
+# We now use the already running Xvfb instead of starting a new one
+pnpm exec playwright test \
+  --config=playwright.config.ts --project Tests --grep Codex --list
+
+# 7. Run the suite
+DEBUG=pw:api,pw:test,codex,main,mock-codex,electron:* \
   pnpm exec playwright test \
     --config=playwright.config.ts \
     --project Tests --grep Codex --workers 1 --reporter=list --timeout=60000
