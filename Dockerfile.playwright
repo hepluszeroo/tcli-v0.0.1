@@ -149,7 +149,15 @@ RUN set -euxo pipefail && \
     # Download Electron binary directly from GitHub
     echo "Downloading Electron v35.2.1 directly from GitHub..." && \
     cd /tmp && \
-    curl -L --fail --silent --show-error -o electron.zip "https://github.com/electron/electron/releases/download/v35.2.1/electron-v35.2.1-linux-x64.zip" && \
+    ARCH="$(uname -m)" && \
+    if [[ "$ARCH" == "aarch64" ]]; then \
+      ELEC_ARCH="arm64" && \
+      echo "Detected ARM64 architecture, downloading ARM64 Electron binary"; \
+    else \
+      ELEC_ARCH="x64" && \
+      echo "Using x64 Electron binary"; \
+    fi && \
+    curl -L --fail --silent --show-error -o electron.zip "https://github.com/electron/electron/releases/download/v35.2.1/electron-v35.2.1-linux-${ELEC_ARCH}.zip" && \
     echo "✅ Download completed successfully" && \
     echo "Extracting Electron binary..." && \
     unzip -o electron.zip -d /repo/vendor/electron/dist && \
