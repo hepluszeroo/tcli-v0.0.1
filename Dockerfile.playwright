@@ -562,6 +562,9 @@ COPY Tangent-main/apps/tangent-electron/scripts/stub_main.js\
 # -----------------------------------------------------------------
 # 11 · FINAL — ABSOLUTELY NOTHING MAY FOLLOW THIS (except ARGs)
 # -----------------------------------------------------------------
+# Final binary installation & permission fix must run as root for chown 4755
+USER root
+
 RUN set -eux; \
     # 1. make sure the target dir exists even if pnpm hoisted it elsewhere
     mkdir -p /repo/node_modules/electron/dist && \
@@ -573,13 +576,24 @@ RUN set -eux; \
     done && \
     # 3. authoritative symlink used by scripts/debugging
     ln -sf /repo/vendor/electron/dist/electron /repo/bin/electron && \
+    # Fix chrome-sandbox permissions once and for all so Electron never
+    # complains about SUID in either build-time self-tests or Playwright runs.
+    if [ -f /repo/vendor/electron/dist/chrome-sandbox ]; then \
+        chown root:root /repo/vendor/electron/dist/chrome-sandbox && \
+        chmod 4755 /repo/vendor/electron/dist/chrome-sandbox; \
+    fi && \
+    # Propagate the helper into every dist/ directory that holds the main binary
+    for d in $(find /repo/node_modules -path '*/electron/dist' -type d); do \
+        cp -f /repo/vendor/electron/dist/chrome-sandbox "$d/chrome-sandbox"; \
+        chown root:root "$d/chrome-sandbox"; \
+        chmod 4755 "$d/chrome-sandbox"; \
+    done && \
     # 4. prove it worked
     file -L /repo/bin/electron && \
-    # Electron's sandbox helper "chrome-sandbox" is not SUID-correct in this
-    # non-privileged build context, so we pass --no-sandbox when invoking the
-    # binary.  Playwright and our test harness always run Electron with the
-    # same flag at runtime.
     /repo/bin/electron --no-sandbox --version
+
+# Revert to the non-root user for the runtime container.
+USER pwuser
 
 # Use the script as the entry point
 CMD ["/repo/scripts/docker-run-tests.sh"]
