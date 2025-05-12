@@ -443,6 +443,13 @@ export async function launchElectron(opts: {
       console.log(`[electronHarness] Using launch timeout: ${launchTimeout}ms`);
 
       // STEP 4: Let Playwright choose the binary automatically
+      // CRITICAL FIX: Remove ELECTRON_RUN_AS_NODE completely from environment
+      // This needs to happen right before launch to ensure it's not inherited by any process
+      if ('ELECTRON_RUN_AS_NODE' in electronEnv) {
+        delete electronEnv.ELECTRON_RUN_AS_NODE;
+        console.log('[electronHarness] 🔴 CRITICAL FIX: Deleted ELECTRON_RUN_AS_NODE from environment before launch');
+      }
+
       const launchOptions: any = {
         cwd: actualBuildDir,
         args: finalArgs,
