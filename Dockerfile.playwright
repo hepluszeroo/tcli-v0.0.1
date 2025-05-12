@@ -41,7 +41,7 @@ RUN set -euxo pipefail && \
         libasound2 libpulse0 \
         libnss3 libnspr4 \
         libgtk-3-0 libcups2 libxcb-shm0 libatk1.0-0 libatk-bridge2.0-0 \
-        xvfb dbus-x11 \
+        xvfb dbus-x11 x11-utils \
         libgconf-2-4 libnotify4 libxss1 && \
     rm -rf /var/lib/apt/lists/*
 
