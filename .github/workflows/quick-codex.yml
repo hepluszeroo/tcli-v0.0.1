@@ -43,6 +43,22 @@ jobs:
       - name: Build E2E bundle
         run: pnpm --filter tangent_electron run build:test-e2e
 
+      - name: Verify Dockerfile contents
+        if: runner.os == 'Linux'
+        run: |
+          echo "### Current branch and commit:"
+          echo "GITHUB_SHA: $GITHUB_SHA"
+          echo "Local HEAD: $(git rev-parse HEAD)"
+
+          echo "### Digest of Dockerfile.playwright about to be built:"
+          sha1sum Dockerfile.playwright | tee /tmp/dockerfile.sha
+
+          echo "### First 40 lines of Dockerfile (looking for ELECTRON_OVERRIDE_DIST_PATH):"
+          head -n 40 Dockerfile.playwright | grep -n "ELECTRON_OVERRIDE_DIST_PATH" || echo "NOT FOUND - wrong file!"
+
+          echo "### Search for vendor electron path logic:"
+          grep -n "vendor/electron" Dockerfile.playwright || echo "NOT FOUND - wrong file!"
+
       - name: Build Docker image (fresh)
         if: runner.os == 'Linux'
         run: |
