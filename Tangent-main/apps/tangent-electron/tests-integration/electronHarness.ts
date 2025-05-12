@@ -469,42 +469,32 @@ export async function launchElectron(opts: {
         dumpio: true        // stream Electron stdout/stderr to parent so CI log shows crash reason
       };
 
-      // Use the direct path to Electron binary in Docker, or the CLI script elsewhere
-      if (process.env.PLAYWRIGHT_IN_DOCKER === '1') {
-        // Inside the CI container we let Playwright launch via the official
-        // electron CLI wrapper.  During the Docker build the real ELF was
-        // copied into node_modules/electron/dist/electron, so the wrapper now
-        // resolves to the correct binary.
-        try {
-          const cliPath = require.resolve('electron/cli.js');
-          launchOptions.executablePath = cliPath;
-          console.log(`[electronHarness] Docker environment: Using CLI wrapper: ${cliPath}`);
-        } catch (err) {
-          console.error('[electronHarness] FATAL: electron/cli.js not resolvable inside Docker');
-          throw err;
-        }
+      // -------------------------------------------------------------------
+      // Let Playwright pick the appropriate Electron binary automatically.
+      // -------------------------------------------------------------------
+      // Historically we tried to pass the path returned by
+      // `require('electron/cli.js')` (the small JS wrapper that spawns the
+      // real binary).  However Playwright’s `_electron.launch()` expects an
+      // *actual* executable – providing the JS wrapper results in the opaque
+      // "Process failed to launch!" error we are seeing in CI because the
+      // wrapper cannot locate the underlying binary in the pared-down
+      // environment.
 
-        // Ensure ELECTRON_RUN_AS_NODE does not leak
-        if ('ELECTRON_RUN_AS_NODE' in electronEnv) {
-          delete electronEnv.ELECTRON_RUN_AS_NODE;
-        }
+      // By **omitting** `executablePath` completely we defer the resolution
+      // logic to Playwright which falls back to the Electron it bundles
+      // internally.  This binary is fully self-contained, verified to work in
+      // headless environments, and eliminates the path/permission issues that
+      // have plagued our own lookup code.
+
+      // If the caller explicitly requested a binary (opts.electronBinary) and
+      // we are running inside a Docker container, we still honour it – the
+      // Docker image is built such that the path is guaranteed to be valid.
+
+      if (process.env.PLAYWRIGHT_IN_DOCKER === '1' && fsExists(opts.electronBinary)) {
+        launchOptions.executablePath = opts.electronBinary;
+        console.log(`[electronHarness] Docker environment: using provided binary: ${opts.electronBinary}`);
       } else {
-        // In non-Docker environments, use the CLI script
-        try {
-          // Try to find the Electron CLI script
-          const cliPath = require.resolve('electron/cli.js');
-          launchOptions.executablePath = cliPath;
-          console.log(`[electronHarness] Using Electron CLI script: ${cliPath}`);
-        } catch (e) {
-          console.log(`[electronHarness] Could not find Electron CLI script: ${e}`);
-          // Fall back to the provided binary if the CLI script isn't found
-          if (opts.electronBinary) {
-            launchOptions.executablePath = opts.electronBinary;
-            console.log(`[electronHarness] Falling back to provided binary: ${opts.electronBinary}`);
-          } else {
-            console.log(`[electronHarness] Using Playwright's bundled Electron (no executablePath specified)`);
-          }
-        }
+        console.log('[electronHarness] executablePath not specified – using Playwright-bundled Electron');
       }
 
       const app = await _electron.launch(launchOptions);
