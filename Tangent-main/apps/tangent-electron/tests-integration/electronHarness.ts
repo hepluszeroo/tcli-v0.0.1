@@ -445,12 +445,21 @@ export async function launchElectron(opts: {
         timeout: launchTimeout
       };
 
-      // Only include executablePath if a binary is explicitly provided
-      if (opts.electronBinary) {
-        launchOptions.executablePath = opts.electronBinary;
-        console.log(`[electronHarness] Using provided binary: ${opts.electronBinary}`);
-      } else {
-        console.log(`[electronHarness] Using Playwright's bundled Electron (no executablePath specified)`);
+      // Use the Electron CLI script instead of the raw binary
+      try {
+        // First, try to find the Electron CLI script
+        const cliPath = require.resolve('electron/cli.js');
+        launchOptions.executablePath = cliPath;
+        console.log(`[electronHarness] Using Electron CLI script: ${cliPath}`);
+      } catch (e) {
+        console.log(`[electronHarness] Could not find Electron CLI script: ${e}`);
+        // Fall back to the provided binary if the CLI script isn't found
+        if (opts.electronBinary) {
+          launchOptions.executablePath = opts.electronBinary;
+          console.log(`[electronHarness] Falling back to provided binary: ${opts.electronBinary}`);
+        } else {
+          console.log(`[electronHarness] Using Playwright's bundled Electron (no executablePath specified)`);
+        }
       }
 
       const app = await _electron.launch(launchOptions);

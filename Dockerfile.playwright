@@ -167,9 +167,21 @@ RUN set -euxo pipefail && \
     ls -la /repo/vendor/electron/dist && \
     file /repo/vendor/electron/dist/electron && \
     # Create the universal symlink we already rely on
+    # Install the proper npm electron package
+    echo "Installing electron package via pnpm..." && \
+    cd /repo && \
+    pnpm add -w electron@35.2.1 && \
+    echo "✅ Electron npm package installed" && \
+    # Ensure the target directory exists
+    mkdir -p /repo/node_modules/electron/dist && \
+    # Copy our downloaded binary to the npm package location
+    cp /repo/vendor/electron/dist/electron /repo/node_modules/electron/dist/electron && \
+    chmod +x /repo/node_modules/electron/dist/electron && \
+    echo "✅ Copied Electron binary to npm package location" && \
+    # Create symlink for backward compatibility
     mkdir -p /repo/bin && \
-    ln -sf /repo/vendor/electron/dist/electron /repo/bin/electron && \
-    echo "✅ Created symlink at /repo/bin/electron -> /repo/vendor/electron/dist/electron" && \
+    ln -sf /repo/node_modules/electron/dist/electron /repo/bin/electron && \
+    echo "✅ Created symlink at /repo/bin/electron -> /repo/node_modules/electron/dist/electron" && \
     # Final sanity check - use file -L to follow symlinks
     test -x /repo/bin/electron \
         || (echo "❌ Electron binary missing after copy"; exit 1) && \
