@@ -549,6 +549,17 @@ RUN set -euxo pipefail && \
     fi && \
     echo "✅ FINAL VERIFICATION PASSED - Electron binary is ready for Playwright"
 
+# ----------------------------------------------------------------------------
+# FINAL Electron fix-up – LAST layer before CMD / ENTRYPOINT
+# Nothing after this can overwrite the files
+# ----------------------------------------------------------------------------
+RUN set -euxo pipefail && \
+    echo "🔗 Overwriting npm wrapper with real ELF" && \
+    cp /repo/vendor/electron/dist/electron /repo/node_modules/electron/dist/electron && \
+    chmod +x /repo/node_modules/electron/dist/electron && \
+    ln -sf /repo/vendor/electron/dist/electron /repo/bin/electron && \
+    file -L /repo/bin/electron
+
 # Use the script as the entry point
 CMD ["/repo/scripts/docker-run-tests.sh"]
 
