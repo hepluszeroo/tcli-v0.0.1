@@ -7,6 +7,35 @@
 
 console.log('[MAIN] stub_main.js loaded and running');
 
+// CRITICAL FIX: Add fatal exception handlers to capture errors that kill Electron
+process.on('uncaughtException', err => {
+  console.error('[MAIN] FATAL uncaughtException:', err);
+  try {
+    require('fs').writeFileSync('/tmp/electron-uncaught.txt', `${err.stack}\n`, 'utf8');
+  } catch (writeErr) {
+    console.error('[MAIN] Failed to write error log:', writeErr);
+  }
+});
+
+process.on('unhandledRejection', err => {
+  console.error('[MAIN] FATAL unhandledRejection:', err);
+  try {
+    require('fs').writeFileSync('/tmp/electron-unhandled.txt', `${String(err)}\n`, 'utf8');
+  } catch (writeErr) {
+    console.error('[MAIN] Failed to write error log:', writeErr);
+  }
+});
+
+// Add exit handler to log exit code
+process.on('exit', (code) => {
+  console.error(`[MAIN] Process exiting with code: ${code}`);
+  try {
+    require('fs').writeFileSync('/tmp/electron-exit-code.txt', `${code}\n`, 'utf8');
+  } catch (writeErr) {
+    // Can't log here as process is exiting
+  }
+});
+
 const { app, BrowserWindow, ipcMain } = require('electron');
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -585,14 +614,56 @@ app.whenReady().then(() => {
   });
   
   // Log renderer path information
-  const rendererPath = path.resolve(__dirname, 'renderer.html');
+  let rendererPath = path.resolve(__dirname, 'renderer.html');
   debugLog(`Current working directory: ${process.cwd()}`);
   debugLog(`__dirname: ${__dirname}`);
   debugLog(`Renderer path: ${rendererPath}`);
-  debugLog(`Renderer file exists: ${fs.existsSync(rendererPath)}`);
-  
-  // Load the renderer HTML
-  win.loadFile(rendererPath);
+
+  // Verify file exists and log its stats
+  if (fs.existsSync(rendererPath)) {
+    try {
+      const stats = fs.statSync(rendererPath);
+      debugLog(`Renderer file exists: true, size: ${stats.size} bytes, mode: ${stats.mode.toString(8)}`);
+    } catch (statErr) {
+      debugLog(`Renderer file exists but stat failed: ${statErr.message}`);
+    }
+  } else {
+    debugLog(`❌ CRITICAL ERROR: Renderer file does not exist at ${rendererPath}`);
+
+    // Try to find the file in nearby locations if it doesn't exist at the expected path
+    const possiblePaths = [
+      path.join(process.cwd(), 'renderer.html'),
+      path.join(__dirname, '..', 'renderer.html'),
+      path.join(__dirname, '..', 'bundle', 'renderer.html')
+    ];
+
+    debugLog(`Searching for renderer.html in alternate locations:`);
+    let foundAlternative = false;
+    for (const altPath of possiblePaths) {
+      if (fs.existsSync(altPath)) {
+        debugLog(`✅ Found renderer.html at alternate location: ${altPath}`);
+        rendererPath = altPath;
+        foundAlternative = true;
+        break;
+      }
+    }
+
+    if (!foundAlternative) {
+      debugLog(`❌ Could not find renderer.html in any location!`);
+    }
+  }
+
+  // Ensure the renderer path is properly resolved
+  const absoluteRendererPath = path.resolve(rendererPath);
+  debugLog(`Loading renderer from absolute path: ${absoluteRendererPath}`);
+
+  try {
+    // Load the renderer HTML
+    win.loadFile(absoluteRendererPath);
+    debugLog(`Renderer file load initiated`);
+  } catch (loadErr) {
+    debugLog(`❌ Error loading renderer file: ${loadErr.message}`);
+  }
   
   // Monitor page loading
   win.webContents.on('did-finish-load', () => {
