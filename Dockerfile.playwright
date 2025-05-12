@@ -575,7 +575,11 @@ RUN set -eux; \
     ln -sf /repo/vendor/electron/dist/electron /repo/bin/electron && \
     # 4. prove it worked
     file -L /repo/bin/electron && \
-    /repo/bin/electron --version
+    # Electron's sandbox helper "chrome-sandbox" is not SUID-correct in this
+    # non-privileged build context, so we pass --no-sandbox when invoking the
+    # binary.  Playwright and our test harness always run Electron with the
+    # same flag at runtime.
+    /repo/bin/electron --no-sandbox --version
 
 # Use the script as the entry point
 CMD ["/repo/scripts/docker-run-tests.sh"]

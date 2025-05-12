@@ -45,7 +45,7 @@ SYMLINK_TARGET=$(readlink -f /repo/bin/electron)
 echo "   $SYMLINK_TARGET"
 
 echo "6. Version check:"
-ELECTRON_VERSION=$(/repo/bin/electron --version 2>/dev/null || echo "Failed with code: $?")
+ELECTRON_VERSION=$(/repo/bin/electron --no-sandbox --version 2>/dev/null || echo "Failed with code: $?")
 echo "   $ELECTRON_VERSION"
 if [[ "$ELECTRON_VERSION" == v35* ]]; then
   echo "✅ Electron version $ELECTRON_VERSION is compatible with Node $NODE_VER"

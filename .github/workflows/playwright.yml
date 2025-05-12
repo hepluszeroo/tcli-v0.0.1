@@ -42,6 +42,14 @@ jobs:
             --build-arg STUB_HASH=${{ github.sha }} \
             -f Dockerfile.playwright -t tangent-tests .
 
+      # Quick sanity-check: ensure the image really contains an ELF Electron
+      # binary that starts (with --no-sandbox) **before** we waste time running
+      # the full Playwright suite.
+      - name: Sanity-check Electron in built image
+        run: |
+          docker run --platform linux/amd64 --rm tangent-tests \
+            bash -c "set -e; file -L /repo/bin/electron; /repo/bin/electron --no-sandbox --version"
+
       - name: Run Playwright suite in container
         run: docker run --rm -e ELECTRON_DISABLE_SANDBOX=1 tangent-tests
 
