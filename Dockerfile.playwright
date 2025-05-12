@@ -203,6 +203,18 @@ RUN set -euxo pipefail && \
     chmod +x /repo/vendor/electron/dist/electron && \
     echo "✅ Full Electron installation complete and verified"
 
+# ------------------------------------------------------------------
+# 10 · FINAL symlink guard – ensures /repo/bin/electron always points
+#      to the real ELF *after* all pnpm commands (which may recreate
+#      their own stub symlink).  Must be placed near the end of the
+#      Dockerfile.
+# ------------------------------------------------------------------
+
+RUN set -euxo pipefail && \
+    echo "🔗  Ensuring /repo/bin/electron symlink targets vendor ELF" && \
+    ln -sf /repo/vendor/electron/dist/electron /repo/bin/electron && \
+    file -L /repo/bin/electron
+
 # Run a diagnostic search before the actual check
 RUN set -euxo pipefail && \
     echo "🔍 Searching for chrome-sandbox and Electron binaries..." && \
