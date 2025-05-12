@@ -9,6 +9,41 @@ import os from 'os'
 import TangentApp from './TangentApp'
 import { DEFAULT_WORKSPACE } from './pathHelpers'
 
+// ---------------------------------------------------------------------------
+// Ensure Playwright's own Electron binary is downloaded on CI runners that do
+// not build a project-specific Electron.  The command is idempotent and
+// returns instantly when the browser is already present, so we can run it
+// unconditionally the first time this module is evaluated.
+// ---------------------------------------------------------------------------
+
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace NodeJS {
+    interface Global {
+      __PW_ELECTRON_READY?: true;
+    }
+  }
+}
+
+if (!global.__PW_ELECTRON_READY) {
+  try {
+    // Only invoke the installer on non-Docker CI jobs where we rely on the
+    // Playwright-bundled Electron (execPath == '').
+    if (process.env.CI && process.env.PLAYWRIGHT_IN_DOCKER !== '1') {
+      console.log('[tangent.ts] Ensuring Playwright Electron is installed…');
+      const { execFileSync } = require('child_process');
+      execFileSync('npx', ['--yes', 'playwright', 'install', 'electron'], {
+        stdio: 'inherit',
+        timeout: 5 * 60 * 1000 // 5 minutes max
+      });
+    }
+    global.__PW_ELECTRON_READY = true;
+  } catch (installErr) {
+    console.warn('[tangent.ts] Playwright Electron install attempt failed:', installErr);
+    // continue – _electron.launch() will throw a clear error if the binary is still missing
+  }
+}
+
 // Ensure CI never forces the project Electron binary unless explicitly opted
 // in by the workflow.  Some runners accidentally inherit environment
 // variables from previous jobs or repository secrets – that would re-introduce
