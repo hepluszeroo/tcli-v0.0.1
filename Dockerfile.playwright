@@ -162,16 +162,16 @@ RUN set -euxo pipefail && \
     mkdir -p /repo/bin && \
     ln -sf /repo/vendor/electron/dist/electron /repo/bin/electron && \
     echo "✅ Created symlink at /repo/bin/electron -> /repo/vendor/electron/dist/electron" && \
-    # Final sanity check
+    # Final sanity check - use file -L to follow symlinks
     test -x /repo/bin/electron \
         || (echo "❌ Electron binary missing after copy"; exit 1) && \
-    file /repo/bin/electron | grep -q 'ELF 64-bit' \
-        || (echo "❌ Binary exists but is not an ELF executable"; exit 1) && \
+    file -L /repo/bin/electron | grep -q 'ELF 64-bit' \
+        || (echo "❌ Binary exists but is not an ELF executable. Got: $(file -L /repo/bin/electron)"; exit 1) && \
     echo "✅ Electron install script finished successfully" && \
     echo "Verifying Electron binary location and type:" && \
-    echo "- Temporary location: $(file /tmp/electron-bin/electron)" && \
     echo "- Vendor location: $(file /repo/vendor/electron/dist/electron)" && \
     echo "- Symlink location: $(file /repo/bin/electron)" && \
+    echo "- Dereferenced symlink: $(file -L /repo/bin/electron)" && \
     chmod +x /repo/vendor/electron/dist/electron && \
     echo "✅ Full Electron installation complete and verified"
 
@@ -209,10 +209,11 @@ RUN set -euxo pipefail && \
     ls -la /repo/bin/electron && \
     ls -la /repo/vendor/electron/dist/electron && \
     # Verify that the Electron binary is actually an executable file, not just a JS wrapper
-    if file /repo/bin/electron | grep -q "ELF 64-bit LSB executable"; then \
+    # Use file -L to dereference the symlink
+    if file -L /repo/bin/electron | grep -q "ELF 64-bit LSB executable"; then \
         echo "✅ Electron binary is a proper ELF executable"; \
     else \
-        echo "❌ Electron binary is NOT an ELF executable! Got: $(file /repo/bin/electron)" && \
+        echo "❌ Electron binary is NOT an ELF executable! Got: $(file -L /repo/bin/electron)" && \
         echo "This suggests the Electron installation failed to download the actual binary." && \
         exit 1; \
     fi && \
