@@ -490,7 +490,18 @@ export async function launchElectron(opts: {
       // we are running inside a Docker container, we still honour it – the
       // Docker image is built such that the path is guaranteed to be valid.
 
-      if (process.env.PLAYWRIGHT_IN_DOCKER === '1' && typeof opts.electronBinary === 'string' && fsExists(opts.electronBinary)) {
+      const runningInDocker = process.env.PLAYWRIGHT_IN_DOCKER === '1';
+
+      // By default, inside Docker we let Playwright use its own vetted Electron
+      // build because it is known to work in headless CI without sandbox /
+      // namespace issues.  The project-installed binary is only used when the
+      // caller explicitly opts-in via FORCE_PROJECT_ELECTRON=1.
+
+      const forceProjectElectron = process.env.FORCE_PROJECT_ELECTRON === '1';
+
+      if (runningInDocker && !forceProjectElectron) {
+        console.log('[electronHarness] Docker run detected – using Playwright-bundled Electron (no executablePath)');
+      } else if (typeof opts.electronBinary === 'string' && fsExists(opts.electronBinary)) {
         let binaryPath = opts.electronBinary;
 
         // -----------------------------------------------------------------
@@ -503,6 +514,7 @@ export async function launchElectron(opts: {
         // Playwright tries to exec the wrapper under a stripped-down PATH.
         // -----------------------------------------------------------------
 
+        // Case 1: path/.../electron/cli.js  (JS wrapper inside the package)
         if (binaryPath.endsWith(path.join('electron', 'cli.js'))) {
           const candidate = path.resolve(path.dirname(binaryPath), 'dist', 'electron');
           if (fsExists(candidate)) {
@@ -510,6 +522,20 @@ export async function launchElectron(opts: {
             binaryPath = candidate;
           } else {
             console.warn('[electronHarness] Provided path is cli.js but no dist/electron sibling exists – falling back to Playwright default');
+          }
+        }
+
+        // Case 2: project-level convenience wrapper /repo/bin/electron (shell
+        // script that execs the CLI).  Resolve it to node_modules if found.
+        if (binaryPath.endsWith(path.join('bin', 'electron'))) {
+          // Try locate sibling node_modules/electron/dist/electron
+          const rootDir = path.resolve(path.dirname(binaryPath), '..'); // /repo
+          const candidate = path.join(rootDir, 'node_modules', 'electron', 'dist', 'electron');
+          if (fsExists(candidate)) {
+            console.log('[electronHarness] Detected bin/electron wrapper – rewriting executablePath ->', candidate);
+            binaryPath = candidate;
+          } else {
+            console.warn('[electronHarness] bin/electron wrapper but dist binary missing – falling back to Playwright default');
           }
         }
 

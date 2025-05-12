@@ -104,9 +104,8 @@ function getElectronExec(): string {
   // In Docker environment, point Playwright at the npm Electron CLI wrapper.
   if (process.env.PLAYWRIGHT_IN_DOCKER === '1') {
     // In Docker prefer the *real executable* shipped inside the electron
-    // package (…/dist/electron).  We still resolve the JS wrapper first and
-    // then rewrite it to the sibling binary so the logic also works when the
-    // package layout changes subtly between versions.
+    // package (…/dist/electron).  We attempt a few common patterns before we
+    // surrender to the wrapper (the harness will rewrite it again anyway).  
 
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const cliPath = require.resolve('electron/cli.js');
