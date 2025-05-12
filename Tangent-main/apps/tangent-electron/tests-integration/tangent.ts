@@ -328,8 +328,11 @@ try {
   throw new Error(`Failed to resolve Electron binary: ${error}`)
 }
 
-// Fail early with a friendly hint when the Electron binary is missing
-if (!fs.existsSync(execPath)) {
+// When execPath is an empty string we intentionally defer to Playwright’s
+// bundled Electron; skip the strict existence check in that case.
+// (getElectronExec returns '' when FORCE_PROJECT_ELECTRON is not set.)
+
+if (execPath && execPath.length > 0 && !fs.existsSync(execPath)) {
   // Try one last fallback for Docker environments
   if (process.env.PLAYWRIGHT_IN_DOCKER === '1') {
     console.error('[tangent.ts] Final attempt to find Electron binary in Docker...')
@@ -364,7 +367,11 @@ if (!fs.existsSync(execPath)) {
 
 const mainEntry = path.join(buildDir, 'bundle', 'main.js')
 
-console.log('[tangent.ts] launching Electron binary:', execPath)
+if (!execPath) {
+  console.log('[tangent.ts] No project Electron binary specified – letting Playwright use its bundled Electron');
+} else {
+  console.log('[tangent.ts] launching Electron binary:', execPath);
+}
 
 const { app: electronApp, child } = await launchElectron({
   electronBinary: execPath,
