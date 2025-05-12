@@ -532,7 +532,6 @@ export async function launchElectron(opts: {
 
         // Case 2: project-level convenience wrapper /repo/bin/electron (shell
         // script that execs the CLI).  Resolve it to node_modules if found.
-        let wrapperDetected = false;
         if (binaryPath.endsWith(path.join('bin', 'electron'))) {
           // Try locate sibling node_modules/electron/dist/electron
           const rootDir = path.resolve(path.dirname(binaryPath), '..'); // /repo
