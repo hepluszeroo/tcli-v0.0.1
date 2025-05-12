@@ -56,6 +56,10 @@ echo '=== Running Electron binary verification ==='
 echo "Starting Xvfb display server..."
 Xvfb :99 -screen 0 1280x720x24 -ac &
 export DISPLAY=:99
+# Ensure Electron wrapper always resolves the real ELF
+export ELECTRON_OVERRIDE_DIST_PATH=/repo/vendor/electron/dist/electron
+# Explicitly disable sandbox (we still pass --no-sandbox flags but belt-and-braces)
+export ELECTRON_DISABLE_SANDBOX=1
 sleep 2
 
 # Verify display server is working

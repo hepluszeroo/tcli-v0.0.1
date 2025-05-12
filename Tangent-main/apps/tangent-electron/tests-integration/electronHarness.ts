@@ -35,6 +35,8 @@ export async function launchElectron(opts: {
     // "DevTools listening on ws://…" line it needs to attach.
     ELECTRON_ENABLE_LOGGING: '1',
     ELECTRON_ENABLE_STACK_DUMPING: '1',
+    // Force wrapper to use the real ELF regardless of pnpm changes
+    ELECTRON_OVERRIDE_DIST_PATH: '/repo/vendor/electron/dist/electron',
     // IMPORTANT: Disable sandbox but DON'T set ELECTRON_RUN_AS_NODE – we
     // explicitly strip that variable right before launch to avoid the
     // renderer running as a Node process.
