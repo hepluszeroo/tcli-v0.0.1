@@ -157,6 +157,14 @@ RUN set -euxo pipefail && \
       ELEC_ARCH="x64" && \
       echo "Using x64 Electron binary"; \
     fi && \
+    # Determine architecture for correct Electron build
+    ARCH="$(uname -m)" && \
+    if [[ "$ARCH" == "aarch64"* ]]; then \
+        ELEC_ARCH="arm64"; \
+    else \
+        ELEC_ARCH="x64"; \
+    fi && \
+    echo "Downloading Electron v35.2.1 for arch: $ELEC_ARCH" && \
     curl -L --fail --silent --show-error -o electron.zip "https://github.com/electron/electron/releases/download/v35.2.1/electron-v35.2.1-linux-${ELEC_ARCH}.zip" && \
     echo "✅ Download completed successfully" && \
     echo "Extracting Electron binary..." && \

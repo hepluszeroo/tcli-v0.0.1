@@ -101,12 +101,15 @@ function getElectronExec(): string {
   console.log('[tangent.ts] Platform:', process.platform);
   console.log('[tangent.ts] In Docker:', process.env.PLAYWRIGHT_IN_DOCKER === '1' ? 'Yes' : 'No');
 
-  // In Docker environment, use our guaranteed Electron binary
+  // In Docker environment, point Playwright at the npm Electron CLI wrapper.
   if (process.env.PLAYWRIGHT_IN_DOCKER === '1') {
-    console.log('[tangent.ts] Docker environment detected. Using guaranteed Electron path...');
+    console.log('[tangent.ts] Docker environment detected. Using electron/cli.js wrapper');
 
-    // Use the guaranteed path directly for Docker environment
-    return '/repo/bin/electron';
+    // The CLI wrapper resolves the correct dist/electron binary and is what Playwright expects.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const cliPath = require.resolve('electron/cli.js');
+    console.log('[tangent.ts] Resolved electron CLI:', cliPath);
+    return cliPath;
   }
 
   // UPDATED: We no longer use executablePath() as it doesn't exist in Playwright 1.52
