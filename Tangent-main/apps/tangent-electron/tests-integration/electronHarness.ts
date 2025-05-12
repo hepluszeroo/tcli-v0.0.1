@@ -491,18 +491,22 @@ export async function launchElectron(opts: {
       // Docker image is built such that the path is guaranteed to be valid.
 
       const runningInDocker = process.env.PLAYWRIGHT_IN_DOCKER === '1';
-
-      // By default, inside Docker we let Playwright use its own vetted Electron
-      // build because it is known to work in headless CI without sandbox /
-      // namespace issues.  The project-installed binary is only used when the
-      // caller explicitly opts-in via FORCE_PROJECT_ELECTRON=1.
-
       const forceProjectElectron = process.env.FORCE_PROJECT_ELECTRON === '1';
 
-      if (runningInDocker && !forceProjectElectron) {
-        console.log('[electronHarness] Docker run detected – using Playwright-bundled Electron (no executablePath)');
+      // ------------------------------------------------------------------
+      // Policy matrix: which Electron binary do we launch?
+      //   • default (no FORCE_PROJECT_ELECTRON)  → let Playwright decide
+      //   • FORCE_PROJECT_ELECTRON=1            → use the provided path
+      //                                           after rewriting wrappers
+      //   (Docker or not, the flag overrides)
+      // ------------------------------------------------------------------
+
+      if (!forceProjectElectron) {
+        console.log('[electronHarness] Using Playwright-bundled Electron (executablePath omitted). ' +
+                    'Set FORCE_PROJECT_ELECTRON=1 to use project binary.');
       } else if (typeof opts.electronBinary === 'string' && fsExists(opts.electronBinary)) {
         let binaryPath = opts.electronBinary;
+        let wrapperDetected = false;
 
         // -----------------------------------------------------------------
         // Guard-rail: tests sometimes hand us the *JS CLI wrapper* that lives
@@ -522,11 +526,13 @@ export async function launchElectron(opts: {
             binaryPath = candidate;
           } else {
             console.warn('[electronHarness] Provided path is cli.js but no dist/electron sibling exists – falling back to Playwright default');
+            wrapperDetected = true;
           }
         }
 
         // Case 2: project-level convenience wrapper /repo/bin/electron (shell
         // script that execs the CLI).  Resolve it to node_modules if found.
+        let wrapperDetected = false;
         if (binaryPath.endsWith(path.join('bin', 'electron'))) {
           // Try locate sibling node_modules/electron/dist/electron
           const rootDir = path.resolve(path.dirname(binaryPath), '..'); // /repo
@@ -534,14 +540,17 @@ export async function launchElectron(opts: {
           if (fsExists(candidate)) {
             console.log('[electronHarness] Detected bin/electron wrapper – rewriting executablePath ->', candidate);
             binaryPath = candidate;
+            wrapperDetected = true;
           } else {
             console.warn('[electronHarness] bin/electron wrapper but dist binary missing – falling back to Playwright default');
+            // Mark wrapper so we skip setting executablePath below
+            wrapperDetected = true;
           }
         }
 
-        if (fsExists(binaryPath)) {
+        if (!wrapperDetected && fsExists(binaryPath)) {
           launchOptions.executablePath = binaryPath;
-          console.log(`[electronHarness] Docker environment: using executable binary: ${binaryPath}`);
+          console.log(`[electronHarness] Using project Electron binary: ${binaryPath}`);
         } else {
           console.warn('[electronHarness] Intended Electron binary does not exist – falling back to Playwright default');
         }

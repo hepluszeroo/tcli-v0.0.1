@@ -9,6 +9,15 @@ import os from 'os'
 import TangentApp from './TangentApp'
 import { DEFAULT_WORKSPACE } from './pathHelpers'
 
+// Ensure CI never forces the project Electron binary unless explicitly opted
+// in by the workflow.  Some runners accidentally inherit environment
+// variables from previous jobs or repository secrets – that would re-introduce
+// the wrapper problem we just fixed.
+if (process.env.CI && process.env.FORCE_PROJECT_ELECTRON === '1') {
+  console.log('[tangent.ts] CI run detected – unsetting unintended FORCE_PROJECT_ELECTRON');
+  delete process.env.FORCE_PROJECT_ELECTRON;
+}
+
 // Using this here because playwright doesn't want to play nice with ESM imports
 export function wait(time: number = 0): Promise<void> {
 	return new Promise((resolve, reject) => {
@@ -120,10 +129,19 @@ function getElectronExec(): string {
     return cliPath;
   }
 
-  // UPDATED: We no longer use executablePath() as it doesn't exist in Playwright 1.52
+  // If the harness is going to decide which binary to launch (the recommended
+  // path now), we can simply return an *empty string*.  The harness will
+  // detect that and omit `executablePath`, letting Playwright pick its own
+  // vetted Electron.  Only when the developer opts in via
+  // FORCE_PROJECT_ELECTRON=1 do we attempt resolution.
+
+  if (process.env.FORCE_PROJECT_ELECTRON !== '1') {
+    console.log('[tangent.ts] FORCE_PROJECT_ELECTRON not set – defer binary resolution to harness');
+    return '' as unknown as string;
+  }
+
+  // Legacy resolution logic (only used when FORCE_PROJECT_ELECTRON=1)
   try {
-    // Rather than using the non-existent executablePath() method, we'll rely on well-known paths
-    // and our Docker-specific fallbacks which are more reliable anyway
     console.log('[tangent.ts] Playwright executablePath() is not supported in version 1.52, using fallbacks')
 
     // For Docker environments, we've already handled this above
