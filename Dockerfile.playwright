@@ -499,6 +499,36 @@ RUN set -x && \
     echo "Node version: $(node --version)" && \
     echo "Verification complete."
 
+# FINAL verification and fix to ensure the Electron binary is the real ELF
+# This is a safety measure in case any previous steps overwrote our symlinks
+RUN set -euxo pipefail && \
+    echo "🔍 FINAL VERIFICATION AND FIX FOR ELECTRON BINARY" && \
+    # Ensure the real binary is in the npm package location
+    if [ -f "/repo/vendor/electron/dist/electron" ]; then \
+        echo "✅ Found source binary at /repo/vendor/electron/dist/electron" && \
+        mkdir -p /repo/node_modules/electron/dist/ && \
+        cp -f /repo/vendor/electron/dist/electron /repo/node_modules/electron/dist/electron && \
+        chmod +x /repo/node_modules/electron/dist/electron && \
+        echo "✅ Copied real ELF binary to npm package location"; \
+    else \
+        echo "❌ Source binary not found at /repo/vendor/electron/dist/electron! This is unexpected."; \
+        exit 1; \
+    fi && \
+    # Force the symlink to point to the real binary
+    mkdir -p /repo/bin && \
+    ln -sf /repo/node_modules/electron/dist/electron /repo/bin/electron && \
+    echo "✅ Reinforced symlink at /repo/bin/electron -> /repo/node_modules/electron/dist/electron" && \
+    # Verify the binary is actually an ELF
+    ELECTRON_FILE_TYPE=$(file -L /repo/bin/electron) && \
+    echo "Binary file type: $ELECTRON_FILE_TYPE" && \
+    if [[ "$ELECTRON_FILE_TYPE" == *"ELF 64-bit"* ]]; then \
+        echo "✅ Electron binary is a proper ELF executable"; \
+    else \
+        echo "❌ Binary exists but is not an ELF executable! Got: $ELECTRON_FILE_TYPE"; \
+        exit 1; \
+    fi && \
+    echo "✅ FINAL VERIFICATION PASSED - Electron binary is ready for Playwright"
+
 # Use the script as the entry point
 CMD ["/repo/scripts/docker-run-tests.sh"]
 

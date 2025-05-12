@@ -119,10 +119,10 @@ jobs:
                        # List all test files to verify their presence
                        find /repo/Tangent-main/apps/tangent-electron/tests-integration -name 'codex_*.test.ts' | sort; \
                        # Verify display server is running
-                       echo "DISPLAY=\$DISPLAY" && \
-                       xdpyinfo >/dev/null 2>&1 && echo "✅ X server is running" || echo "❌ X server is NOT running" && \
+                       echo \"DISPLAY=\$DISPLAY\" && \
+                       xdpyinfo >/dev/null 2>&1 && echo \"✅ X server is running\" || echo \"❌ X server is NOT running\" && \
                        # Check Electron architecture and version
-                       echo "Electron runtime arch: \$(/repo/bin/electron --version || echo FAILED)" && \
+                       echo \"Electron runtime arch: \$(/repo/bin/electron --version || echo FAILED)\" && \
                        # List tests matched by filename pattern instead of grep
                        xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' \
                          pnpm exec playwright test --config=playwright.config.ts \
