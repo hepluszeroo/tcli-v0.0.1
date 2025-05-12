@@ -186,10 +186,10 @@ RUN set -euxo pipefail && \
     cp /repo/vendor/electron/dist/electron /repo/node_modules/electron/dist/electron && \
     chmod +x /repo/node_modules/electron/dist/electron && \
     echo "✅ Copied Electron binary to npm package location" && \
-    # Create symlink for backward compatibility
+    # Create symlink used by scripts and verification – point directly to vendor ELF
     mkdir -p /repo/bin && \
-    ln -sf /repo/node_modules/electron/dist/electron /repo/bin/electron && \
-    echo "✅ Created symlink at /repo/bin/electron -> /repo/node_modules/electron/dist/electron" && \
+    ln -sf /repo/vendor/electron/dist/electron /repo/bin/electron && \
+    echo "✅ Created symlink at /repo/bin/electron -> /repo/vendor/electron/dist/electron" && \
     # Final sanity check - use file -L to follow symlinks
     test -x /repo/bin/electron \
         || (echo "❌ Electron binary missing after copy"; exit 1) && \
