@@ -31,8 +31,13 @@ export async function launchElectron(opts: {
   // Special environment variables for Electron
   const electronEnv = {
     ...env,
+    // Always enable verbose logging so Playwright can detect the
+    // "DevTools listening on ws://…" line it needs to attach.
     ELECTRON_ENABLE_LOGGING: '1',
-    // IMPORTANT: Disable sandbox but DON'T set ELECTRON_RUN_AS_NODE
+    ELECTRON_ENABLE_STACK_DUMPING: '1',
+    // IMPORTANT: Disable sandbox but DON'T set ELECTRON_RUN_AS_NODE – we
+    // explicitly strip that variable right before launch to avoid the
+    // renderer running as a Node process.
     ELECTRON_DISABLE_SANDBOX: '1'
   }
 
@@ -454,7 +459,11 @@ export async function launchElectron(opts: {
         cwd: actualBuildDir,
         args: finalArgs,
         env: electronEnv,
-        timeout: launchTimeout
+        timeout: launchTimeout,
+        // Inherit stdio so Playwright can read Electron's stderr line that
+        // contains the DevTools port; without it `_electron.launch()` thinks
+        // the process never started and throws "Process failed to launch!".
+        stdio: 'inherit'
       };
 
       // Use the direct path to Electron binary in Docker, or the CLI script elsewhere
