@@ -144,6 +144,8 @@ RUN set -euxo pipefail && \
     echo "⚙️  Running installer from directory: $ELECTRON_DIR" && \
     cd "$ELECTRON_DIR" && \
     export ELECTRON_SKIP_BINARY_DOWNLOAD=0 && \
+    # Use writable scratch directory to work around read-only pnpm store during Docker build
+    export ELECTRON_OVERRIDE_DIST_PATH=/tmp/electron-bin && \
     echo "👉 CWD: $(pwd)" && \
     echo "👉 Path: $PATH" && \
     NODE_VER=$(node --version) && \
@@ -155,8 +157,11 @@ RUN set -euxo pipefail && \
     else \
         echo "✅ Using compatible Node.js version"; \
     fi && \
-    echo "Running Electron installer with NODE_VER=$NODE_VER (no path overrides)" && \
+    echo "Running Electron installer with NODE_VER=$NODE_VER (using writable scratch dir)" && \
     node install.js && \
+    # Move from writable scratch dir to module path
+    mkdir -p "$ELECTRON_DIR" && \
+    mv /tmp/electron-bin "$ELECTRON_DIR/dist" && \
     test -x "$ELECTRON_DIR/dist/electron" || (echo "❌ Electron binary missing after install"; exit 1) && \
     echo "✅ Electron install script finished. Checking for binary..." && \
     ls -la "$ELECTRON_DIR/dist" || echo "⚠️ dist directory not found" && \
