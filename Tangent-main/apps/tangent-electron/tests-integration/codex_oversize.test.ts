@@ -14,7 +14,8 @@ ensureWorkspaceScaffold(DEFAULT_WORKSPACE);
 seedCodexOn(DEFAULT_WORKSPACE);
 seedGlobalCodex(true, 'test_');
 
-test('Oversize line triggers codex:error but stream continues', async ({ tangent }) => {
+// Keep naming consistent so CI grep filter ("Codex") matches all tests
+test('Codex oversize line triggers codex:error but stream continues', async ({ tangent }) => {
   // CRITICAL WORKAROUND: Due to a known issue with Electron's stdio piping
   // when launched from Playwright on macOS, the file transport is being used
   // to communicate between the Codex mock and the Electron process. This is
