@@ -506,6 +506,13 @@ TESTSCRIPT
 # Make sure the script is executable
 RUN chmod +x /repo/scripts/docker-run-tests.sh
 
+# Verify renderer.html and preload.js exist
+RUN test -f /repo/Tangent-main/apps/tangent-electron/__build/bundle/renderer.html || \
+    (echo "❌ CRITICAL ERROR: renderer.html is missing!" && exit 1) && \
+    test -f /repo/Tangent-main/apps/tangent-electron/__build/bundle/preload.js || \
+    (echo "❌ CRITICAL ERROR: preload.js is missing!" && exit 1) && \
+    echo "✅ Both renderer.html and preload.js exist in the bundle directory"
+
 # Add verification script for Electron binary
 COPY --chown=pwuser:pwuser verify_electron.sh /repo/verify_electron.sh
 RUN chmod +x /repo/verify_electron.sh

@@ -71,12 +71,25 @@ fi
 echo "=== Quick manual launch ==="
 /repo/bin/electron --no-sandbox --disable-gpu --version
 
-# 6. List tests (fail fast if none)
+# 6. Verify preload.js exists in the bundle directory
+PRELOAD_PATH=/repo/Tangent-main/apps/tangent-electron/__build/bundle/preload.js
+echo "Verifying preload.js exists at $PRELOAD_PATH..."
+if [ -f "$PRELOAD_PATH" ]; then
+  echo "✅ preload.js exists"
+  # Run node command to verify preload.js is valid JavaScript
+  node -e "console.log('Checking if preload.js is valid JavaScript...'); require('$PRELOAD_PATH'); console.log('✅ preload.js is valid JavaScript');" || \
+  echo "❌ WARNING: preload.js exists but may contain syntax errors"
+else
+  echo "❌ CRITICAL ERROR: preload.js is missing!"
+  exit 1
+fi
+
+# 7. List tests (fail fast if none)
 # We now use the already running Xvfb instead of starting a new one
 pnpm exec playwright test \
   --config=playwright.config.ts --project Tests --grep Codex --list
 
-# 7. Run the suite
+# 8. Run the suite
 DEBUG=pw:api,pw:test,codex,main,mock-codex,electron:* \
   pnpm exec playwright test \
     --config=playwright.config.ts \

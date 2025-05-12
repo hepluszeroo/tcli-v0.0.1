@@ -450,6 +450,13 @@ export async function launchElectron(opts: {
         // In Docker, directly use the symlink we've carefully maintained
         launchOptions.executablePath = '/repo/bin/electron';
         console.log(`[electronHarness] Docker environment: Using direct binary path: ${launchOptions.executablePath}`);
+
+        // CRITICAL FIX: Remove ELECTRON_RUN_AS_NODE right before launch in Docker
+        // This prevents the renderer process from inheriting this variable
+        if ('ELECTRON_RUN_AS_NODE' in electronEnv) {
+          delete electronEnv.ELECTRON_RUN_AS_NODE;
+          console.log('[electronHarness] 🔴 CRITICAL FIX: Removed ELECTRON_RUN_AS_NODE just before launch');
+        }
       } else {
         // In non-Docker environments, use the CLI script
         try {
