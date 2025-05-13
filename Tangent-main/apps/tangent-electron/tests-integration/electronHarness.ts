@@ -20,7 +20,6 @@ export async function launchElectron(opts: {
   // Define common flags that are always needed
   const commonFlags = [
     '--no-sandbox',
-    '--no-zygote',           // Skip zygote namespace creation to avoid "Failed to move to new namespace" errors
     '--disable-gpu',
     '--remote-debugging-port=0',
     '--disable-setuid-sandbox', // Additional sandbox flag for CI/Docker
