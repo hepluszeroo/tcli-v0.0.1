@@ -500,7 +500,11 @@ export async function launchElectron(opts: {
 
       const forceProjectElectron = process.env.FORCE_PROJECT_ELECTRON === '1';
 
-      if (forceProjectElectron) {
+      if (process.env.PLAYWRIGHT_IN_DOCKER === '1' && !forceProjectElectron) {
+        // Option B: Skip copying entirely and run the vendor ELF directly in Docker
+        launchOptions.executablePath = '/repo/vendor/electron/dist/electron';
+        console.log(`[electronHarness] Docker environment detected – using vendor binary: ${launchOptions.executablePath}`);
+      } else if (forceProjectElectron) {
         launchOptions.executablePath = opts.electronBinary;   // caller takes the risk
         console.log(`[electronHarness] FORCE_PROJECT_ELECTRON=1 – using project binary: ${opts.electronBinary}`);
       } else {
@@ -511,8 +515,8 @@ export async function launchElectron(opts: {
         console.log('[electronHarness] Using Playwright-managed Electron (wrapper decides).');
       }
 
-      // Safety rail to prevent future regressions
-      if (!forceProjectElectron && launchOptions.executablePath) {
+      // Safety rail to prevent future regressions - modified to allow Docker path
+      if (!forceProjectElectron && launchOptions.executablePath && process.env.PLAYWRIGHT_IN_DOCKER !== '1') {
         throw new Error('Unexpected executablePath – harness must let wrapper decide');
       }
 

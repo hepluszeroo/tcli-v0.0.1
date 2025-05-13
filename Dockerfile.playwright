@@ -129,18 +129,10 @@ RUN set -euxo pipefail &&\
 
 
 # ------------------------------------------------------------------
-# 2b · Copy the pnpm-store Electron ELF into node_modules/electron/dist
+# 2b · Skip copying and let electronHarness.ts run vendor ELF directly
 # ------------------------------------------------------------------
 
-RUN set -euxo pipefail && \
-    ELECTRON_PNPM_PATH=$(node -e "process.stdout.write(require.resolve('electron').replace('/cli.js','/dist/electron'))") && \
-    echo "🔗  Copying $ELECTRON_PNPM_PATH into node_modules/electron/dist …" && \
-    mkdir -p /repo/node_modules/electron/dist && \
-    cp "$ELECTRON_PNPM_PATH" /repo/node_modules/electron/dist/electron && \
-    chmod 0755 /repo/node_modules/electron/dist/electron && \
-    node -e "const p=require('electron');console.log('wrapper→',p);if(!require('fs').existsSync(p)) process.exit(1);" && \
-    file -L $(node -e "process.stdout.write(require('electron'))") | grep -q 'ELF 64-bit' && \
-    echo "✅ Electron binary copied and verified"
+# The copy step is removed as we now set executablePath directly in electronHarness.ts
 
 # Double-check Node.js version right before Electron installation
 RUN set -euxo pipefail && \
