@@ -31,8 +31,15 @@ export async function launchElectron(opts: {
   // Special environment variables for Electron
   const electronEnv = {
     ...env,
+    // Always enable verbose logging so Playwright can detect the
+    // "DevTools listening on ws://…" line it needs to attach.
     ELECTRON_ENABLE_LOGGING: '1',
-    // IMPORTANT: Disable sandbox but DON'T set ELECTRON_RUN_AS_NODE
+    ELECTRON_ENABLE_STACK_DUMPING: '1',
+    // Force wrapper to use the real ELF regardless of pnpm changes
+    ELECTRON_OVERRIDE_DIST_PATH: '/repo/vendor/electron/dist/electron',
+    // IMPORTANT: Disable sandbox but DON'T set ELECTRON_RUN_AS_NODE – we
+    // explicitly strip that variable right before launch to avoid the
+    // renderer running as a Node process.
     ELECTRON_DISABLE_SANDBOX: '1'
   }
 
@@ -152,6 +159,11 @@ export async function launchElectron(opts: {
   // Additional Docker environment variables
   if (process.env.PLAYWRIGHT_IN_DOCKER === '1') {
     console.log('[electronHarness] Running in Docker container');
+
+    // CRITICAL FIX: Ensure the Electron process knows it's running in Docker
+    // This is used by stub_main.js to create windows hidden and prevent app exit
+    electronEnv.PLAYWRIGHT_IN_DOCKER = '1';  // Explicitly set to ensure it's passed to Electron
+    electronEnv.ELECTRON_DISABLE_SANDBOX = '1';  // Ensure sandbox is disabled regardless of command line flags
 
     // Verify workspace directory and settings in Docker
     try {
@@ -438,19 +450,74 @@ export async function launchElectron(opts: {
       console.log(`[electronHarness] Using launch timeout: ${launchTimeout}ms`);
 
       // STEP 4: Let Playwright choose the binary automatically
+      // CRITICAL FIX: Remove ELECTRON_RUN_AS_NODE completely from environment
+      // This needs to happen right before launch to ensure it's not inherited by any process
+      if ('ELECTRON_RUN_AS_NODE' in electronEnv) {
+        delete electronEnv.ELECTRON_RUN_AS_NODE;
+        console.log('[electronHarness] 🔴 CRITICAL FIX: Deleted ELECTRON_RUN_AS_NODE from environment before launch');
+      }
+
       const launchOptions: any = {
         cwd: actualBuildDir,
         args: finalArgs,
         env: electronEnv,
-        timeout: launchTimeout
+        timeout: launchTimeout,
+        // Inherit stdio so Playwright can read Electron's stderr line that
+        // contains the DevTools port; without it `_electron.launch()` thinks
+        // the process never started and throws "Process failed to launch!".
+        stdio: 'inherit',
+        dumpio: true        // stream Electron stdout/stderr to parent so CI log shows crash reason
       };
 
-      // Only include executablePath if a binary is explicitly provided
-      if (opts.electronBinary) {
-        launchOptions.executablePath = opts.electronBinary;
-        console.log(`[electronHarness] Using provided binary: ${opts.electronBinary}`);
+      // -------------------------------------------------------------------
+      // Let Playwright pick the appropriate Electron binary automatically.
+      // -------------------------------------------------------------------
+      // Historically we tried to pass the path returned by
+      // `require('electron/cli.js')` (the small JS wrapper that spawns the
+      // real binary).  However Playwright’s `_electron.launch()` expects an
+      // *actual* executable – providing the JS wrapper results in the opaque
+      // "Process failed to launch!" error we are seeing in CI because the
+      // wrapper cannot locate the underlying binary in the pared-down
+      // environment.
+
+      // By **omitting** `executablePath` completely we defer the resolution
+      // logic to Playwright which falls back to the Electron it bundles
+      // internally.  This binary is fully self-contained, verified to work in
+      // headless environments, and eliminates the path/permission issues that
+      // have plagued our own lookup code.
+
+      // If the caller explicitly requested a binary (opts.electronBinary) and
+      // we are running inside a Docker container, we still honour it – the
+      // Docker image is built such that the path is guaranteed to be valid.
+
+      // -------------------------------------------------------------------
+      // Minimal, stable fix for Electron binary resolution
+      // -------------------------------------------------------------------
+      // Only use the explicitly provided binary when FORCE_PROJECT_ELECTRON=1
+      // Otherwise, let Playwright handle resolution to ensure we get the pre-patched
+      // binary from Playwright's cache that works in restricted environments
+      // -------------------------------------------------------------------
+
+      const forceProjectElectron = process.env.FORCE_PROJECT_ELECTRON === '1';
+
+      if (process.env.PLAYWRIGHT_IN_DOCKER === '1' && !forceProjectElectron) {
+        // Option B: Skip copying entirely and run the vendor ELF directly in Docker
+        launchOptions.executablePath = '/repo/vendor/electron/dist/electron';
+        console.log(`[electronHarness] Docker environment detected – using vendor binary: ${launchOptions.executablePath}`);
+      } else if (forceProjectElectron) {
+        launchOptions.executablePath = opts.electronBinary;   // caller takes the risk
+        console.log(`[electronHarness] FORCE_PROJECT_ELECTRON=1 – using project binary: ${opts.electronBinary}`);
       } else {
-        console.log(`[electronHarness] Using Playwright's bundled Electron (no executablePath specified)`);
+        // make 100% sure we do NOT pass any path
+        if ('executablePath' in launchOptions) {
+          delete launchOptions.executablePath;
+        }
+        console.log('[electronHarness] Using Playwright-managed Electron (wrapper decides).');
+      }
+
+      // Safety rail to prevent future regressions - modified to allow Docker path
+      if (!forceProjectElectron && launchOptions.executablePath && process.env.PLAYWRIGHT_IN_DOCKER !== '1') {
+        throw new Error('Unexpected executablePath – harness must let wrapper decide');
       }
 
       const app = await _electron.launch(launchOptions);

@@ -16,18 +16,85 @@ cd /repo/Tangent-main/apps/tangent-electron
 echo "Node  : $(node -v)"
 echo "PW    : $(pnpm dlx playwright@1.52.0 --version)"
 
-# 3. Run electron binary verification
+# ---------------------------------------------------------------------------
+# 3. Defensive check – ensure the real Electron ELF binary is still present.
+#    Some CI runners were observed to cache old layers which resulted in the
+#    project-installed Electron being just a stub text file (created when the
+#    postinstall download failed).  We copy the *known-good* binary that we
+#    embedded during the Docker build (stored under /repo/vendor) back into the
+#    node_modules location.  This is effectively a no-op when the binary is
+#    already correct, but guarantees that the subsequent verification step and
+#    the Playwright launcher will always see a valid ELF executable.
+# ---------------------------------------------------------------------------
+
+if [ -f "/repo/vendor/electron/dist/electron" ]; then
+  echo "Ensuring /repo/bin/electron points to the real ELF binary…"
+  # Re-copy the binary in case the node_modules file was overwritten by a stub
+  # Copy the real binary into *every* electron/dist directory we can find in
+  # the current project – pnpm creates versioned paths under
+  #   node_modules/.pnpm/electron@35.2.1/node_modules/electron/dist
+  # and a symlink at   node_modules/electron → ../../.pnpm/…/electron
+  # We iterate through all matches to avoid subtle cache / symlink issues.
+  while IFS= read -r -d '' distDir; do
+    echo "Installing real Electron binary into $distDir"
+    mkdir -p "$distDir" || true
+    cp -f /repo/vendor/electron/dist/electron "$distDir/electron"
+    chmod +x "$distDir/electron"
+  done < <(find /repo/node_modules -path "*/electron/dist" -type d -print0)
+
+  # Symlink for convenience
+  ln -sf /repo/vendor/electron/dist/electron /repo/bin/electron
+else
+  echo "WARNING: /repo/vendor/electron/dist/electron missing – this should never happen"
+fi
+
+# 4. Run electron binary verification (fails fast if the binary is still wrong)
 echo '=== Running Electron binary verification ==='
 /repo/verify_electron.sh
 
-# 4. List tests (fail fast if none)
-xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' \
-  pnpm exec playwright test \
-    --config=playwright.config.ts --project Tests --grep Codex --list
+# Start Xvfb display server and export DISPLAY properly
+echo "Starting Xvfb display server..."
+Xvfb :99 -screen 0 1280x720x24 -ac &
+export DISPLAY=:99
+# Ensure Electron wrapper always resolves the real ELF
+export ELECTRON_OVERRIDE_DIST_PATH=/repo/vendor/electron/dist/electron
+# Explicitly disable sandbox (we still pass --no-sandbox flags but belt-and-braces)
+export ELECTRON_DISABLE_SANDBOX=1
+sleep 2
 
-# 5. Run the suite
-DEBUG=pw:api,pw:test,codex,main,mock-codex \
-xvfb-run --server-num=99 --server-args='-screen 0 1280x720x24' \
+# Verify display server is working
+echo "Verifying Xvfb is running:"
+if xdpyinfo >/dev/null; then
+  echo "✅ X server is running"
+else
+  echo "❌ X server is NOT running"
+  # Don't abort, try to continue anyway
+fi
+
+# 5. Quick manual Electron launch test to verify it works in headless mode
+echo "=== Quick manual launch ==="
+/repo/bin/electron --no-sandbox --disable-gpu --version
+
+# 6. Verify preload.js exists in the bundle directory
+PRELOAD_PATH=/repo/Tangent-main/apps/tangent-electron/__build/bundle/preload.js
+echo "Verifying preload.js exists at $PRELOAD_PATH..."
+if [ -f "$PRELOAD_PATH" ]; then
+  echo "✅ preload.js exists"
+  # Run node command to verify preload.js is valid JavaScript
+  node -e "console.log('Checking if preload.js is valid JavaScript...'); require('$PRELOAD_PATH'); console.log('✅ preload.js is valid JavaScript');" || \
+  echo "❌ WARNING: preload.js exists but may contain syntax errors"
+else
+  echo "❌ CRITICAL ERROR: preload.js is missing!"
+  exit 1
+fi
+
+# 7. List tests (fail fast if none)
+# We now use the already running Xvfb instead of starting a new one
+pnpm exec playwright test \
+  --config=playwright.config.ts --project Tests --grep Codex --list
+
+# 8. Run the suite
+DEBUG=pw:api,pw:test,codex,main,mock-codex,electron:* \
   pnpm exec playwright test \
     --config=playwright.config.ts \
     --project Tests --grep Codex --workers 1 --reporter=list --timeout=60000

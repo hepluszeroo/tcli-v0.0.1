@@ -41,7 +41,7 @@ RUN set -euxo pipefail && \
         libasound2 libpulse0 \
         libnss3 libnspr4 \
         libgtk-3-0 libcups2 libxcb-shm0 libatk1.0-0 libatk-bridge2.0-0 \
-        xvfb dbus-x11 \
+        xvfb dbus-x11 x11-utils \
         libgconf-2-4 libnotify4 libxss1 && \
     rm -rf /var/lib/apt/lists/*
 
@@ -120,6 +120,20 @@ RUN set -euxo pipefail &&\
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pnpm -ddd install -r --frozen-lockfile --prod=false --ignore-scripts=false &&\
     echo "✅ Main pnpm install complete."
 
+# ------------------------------------------------------------------
+# 2b · Install Playwright-managed Electron inside the image so the wrapper
+#      always finds a sandbox-patched binary.  This adds ~200 MB once but
+#      removes the need to copy our vendor ELF into node_modules and avoids
+#      spawn ENOTDIR errors caused by pnpm store symlinks.
+# ------------------------------------------------------------------
+
+
+# ------------------------------------------------------------------
+# 2b · Skip copying and let electronHarness.ts run vendor ELF directly
+# ------------------------------------------------------------------
+
+# The copy step is removed as we now set executablePath directly in electronHarness.ts
+
 # Double-check Node.js version right before Electron installation
 RUN set -euxo pipefail && \
     NODE_VER=$(node --version) && \
@@ -130,51 +144,74 @@ RUN set -euxo pipefail && \
     fi && \
     echo "✅ Using correct Node.js version ($NODE_VER) for Electron 35 compatibility"
 
-# Directly execute the first Electron installer we can find in the repo with enhanced diagnostics
+# Download Electron directly from GitHub releases
 RUN set -euxo pipefail && \
-    echo "🔍 Looking for electron/install.js ..." && \
-    find /repo -path "*/node_modules/electron" -type d && \
-    find /repo -path "*/node_modules/electron/install.js" && \
-    ELECTRON_INSTALL=$(find /repo -path "*/node_modules/electron/install.js" | head -n 1) && \
-    if [ -z "$ELECTRON_INSTALL" ]; then \
-       echo "❌   install.js not found anywhere → abort" && exit 1 ;\
-    fi && \
-    ELECTRON_DIR=$(dirname "$ELECTRON_INSTALL") && \
-    echo "⚙️  Found electron at: $ELECTRON_DIR" && \
-    echo "⚙️  Running installer from directory: $ELECTRON_DIR" && \
-    cd "$ELECTRON_DIR" && \
-    export ELECTRON_SKIP_BINARY_DOWNLOAD=0 && \
-    echo "👉 CWD: $(pwd)" && \
-    echo "👉 Path: $PATH" && \
+    echo "🔍 Bypassing Electron installer to download binary directly from GitHub" && \
+    echo "👉 Checking docker environment..." && \
+    df -h && \
     NODE_VER=$(node --version) && \
     echo "👉 Node version: $NODE_VER" && \
     if [[ "$NODE_VER" != v20.* ]]; then \
         echo "❌ WRONG VERSION: Node.js 20.x required for Electron 35 compatibility, but got $NODE_VER" && \
-        echo "💡 This will likely cause the Electron install to fail." && \
         exit 1; \
     else \
         echo "✅ Using compatible Node.js version"; \
     fi && \
-    echo "Running Electron installer with NODE_VER=$NODE_VER (no path overrides)" && \
-    node install.js && \
-    test -x "$ELECTRON_DIR/dist/electron" || (echo "❌ Electron binary missing after install"; exit 1) && \
-    echo "✅ Electron install script finished. Checking for binary..." && \
-    ls -la "$ELECTRON_DIR/dist" || echo "⚠️ dist directory not found" && \
-    if [ -f "$ELECTRON_DIR/dist/electron" ]; then \
-        echo "✅ Electron binary exists at $ELECTRON_DIR/dist/electron" && \
-        chmod +x "$ELECTRON_DIR/dist/electron"; \
+    # Create directories for Electron binary
+    mkdir -p /repo/vendor/electron/dist && \
+    chmod 755 /repo/vendor/electron/dist && \
+    # Download Electron binary directly from GitHub
+    echo "Downloading Electron v35.2.1 directly from GitHub..." && \
+    cd /tmp && \
+    ARCH="$(uname -m)" && \
+    if [[ "$ARCH" == "aarch64" ]]; then \
+      ELEC_ARCH="arm64" && \
+      echo "Detected ARM64 architecture, downloading ARM64 Electron binary"; \
     else \
-        echo "❌ Electron binary not found at expected location" && \
-        exit 1; \
+      ELEC_ARCH="x64" && \
+      echo "Using x64 Electron binary"; \
     fi && \
-    # Verify the binary is actually an ELF executable
-    if file "$ELECTRON_DIR/dist/electron" | grep -q "ELF 64-bit LSB executable"; then \
-        echo "✅ Electron binary is a proper ELF executable"; \
+    # Determine architecture for correct Electron build
+    ARCH="$(uname -m)" && \
+    if [[ "$ARCH" == "aarch64"* ]]; then \
+        ELEC_ARCH="arm64"; \
     else \
-        echo "❌ Electron binary is NOT an ELF executable! Got: $(file "$ELECTRON_DIR/dist/electron")" && \
-        echo "This suggests the Electron installation failed to download the actual binary." && \
-        exit 1; \
-    fi
+        ELEC_ARCH="x64"; \
+    fi && \
+    echo "Downloading Electron v35.2.1 for arch: $ELEC_ARCH" && \
+    curl -L --fail --silent --show-error -o electron.zip "https://github.com/electron/electron/releases/download/v35.2.1/electron-v35.2.1-linux-${ELEC_ARCH}.zip" && \
+    echo "✅ Download completed successfully" && \
+    echo "Extracting Electron binary..." && \
+    unzip -o electron.zip -d /repo/vendor/electron/dist && \
+    chmod +x /repo/vendor/electron/dist/electron && \
+    echo "✅ Electron binary extracted to /repo/vendor/electron/dist" && \
+    # Verify the binary is there and is indeed an executable
+    ls -la /repo/vendor/electron/dist && \
+    file /repo/vendor/electron/dist/electron && \
+    # Create the universal symlink we already rely on
+    # Install the proper npm electron package
+    echo "Installing electron package via pnpm..." && \
+    cd /repo && \
+    pnpm add -w electron@35.2.1 && \
+    echo "✅ Electron npm package installed" && \
+    # Ensure the target directory exists
+    mkdir -p /repo/node_modules/electron/dist && \
+    # (Vendor ELF remains in /repo/vendor/electron/dist but we no longer copy
+    #  it into node_modules; Playwright will use its own sandbox-patched
+    #  Electron instead.) && \
+    echo "✅ Vendor Electron download complete"
+
+# ------------------------------------------------------------------
+# 10 · FINAL symlink guard – ensures /repo/bin/electron always points
+#      to the real ELF *after* all pnpm commands (which may recreate
+#      their own stub symlink).  Must be placed near the end of the
+#      Dockerfile.
+# ------------------------------------------------------------------
+
+RUN set -euxo pipefail && \
+    echo "🔗  Ensuring /repo/bin/electron symlink targets vendor ELF" && \
+    ln -sf /repo/vendor/electron/dist/electron /repo/bin/electron && \
+    file -L /repo/bin/electron
 
 # Run a diagnostic search before the actual check
 RUN set -euxo pipefail && \
@@ -183,54 +220,26 @@ RUN set -euxo pipefail && \
     find /repo -name electron -type f || echo "No electron binaries found" && \
     find /repo -path "*/electron/dist" || echo "No electron/dist directories found"
 
-# Verify that Electron binary exists - no fallback, we rely on the earlier installation step
+# Verify the vendor Electron installation and symlinks
 RUN set -exo pipefail && \
-    ELECTRON_DIR=$(find /repo -path "*/node_modules/electron" -type d | head -n 1) && \
-    if [ -z "$ELECTRON_DIR" ]; then \
-        echo "❌ Could not find any electron directory" && exit 1; \
-    fi && \
-    if [ -f "$ELECTRON_DIR/dist/electron" ]; then \
-        echo "✅ Found Electron binary at $ELECTRON_DIR/dist/electron"; \
+    echo "🔍 Verifying Electron installation paths" && \
+    if [ -x "/repo/vendor/electron/dist/electron" ]; then \
+        echo "✅ Found Electron binary at /repo/vendor/electron/dist/electron"; \
     else \
-        echo "❌ Electron binary not found at $ELECTRON_DIR/dist/electron" && \
-        echo "Earlier installation step failed to produce a binary." && \
-        exit 1; \
-    fi
+        echo "❌ Vendor Electron binary not found or not executable" && exit 1; \
+    fi && \
+    echo "(skipping /repo/bin/electron symlink check – using Playwright cache)"
 
-# Create the helper path after the guard with more robust binary finder
+# Additional verification of the existing Electron binary and symlink
 RUN set -euxo pipefail && \
-    echo "🔍 Searching for Electron binary in repository..." && \
-    # The actual electron binary is in the dist subdirectory, not directly in the electron directory
-    ELECTRON_BINARY=$(find /repo -path "*/node_modules/electron/dist/electron" -type f | head -n 1) && \
-    if [ -z "$ELECTRON_BINARY" ]; then \
-        echo "❌ Could not find electron binary. Showing all electron-related folders:" && \
-        find /repo -path "*/electron*" -type d | sort && \
-        find /repo -name "electron" -type f | sort && \
-        echo "Showing all directories under pnpm store:" && \
-        find /repo/node_modules/.pnpm -type d -maxdepth 3 | grep electron && \
-        echo "Failed to find Electron binary - cannot create symlink" && exit 1; \
-    fi && \
-    echo "📍 Found electron binary at: $ELECTRON_BINARY" && \
-    # Make sure the binary is executable
-    chmod +x "$ELECTRON_BINARY" && \
-    # Create symlink
-    mkdir -p /repo/bin && \
-    ln -sf "$ELECTRON_BINARY" /repo/bin/electron && \
-    echo "✅ Electron symlink created successfully from $ELECTRON_BINARY to /repo/bin/electron" && \
-    # Verify the symlink works
-    if [ -L "/repo/bin/electron" ]; then \
-        TARGET=$(readlink -f /repo/bin/electron) && \
-        echo "🔍 Symlink points to: $TARGET"; \
-    fi && \
-    ls -la /repo/bin/electron && \
-    # Verify that the Electron binary is actually an executable file, not just a JS wrapper
-    if file "$ELECTRON_BINARY" | grep -q "ELF 64-bit LSB executable"; then \
-        echo "✅ Electron binary is a proper ELF executable"; \
-    else \
-        echo "❌ Electron binary is NOT an ELF executable! Got: $(file "$ELECTRON_BINARY")" && \
-        echo "This suggests the Electron installation failed to download the actual binary." && \
-        exit 1; \
-    fi
+    echo "🔍 Final verification of Electron binary and symlinks" && \
+    # Verify binary exists and is executable
+    test -x /repo/bin/electron || (echo "❌ /repo/bin/electron is not executable" && exit 1) && \
+    # Show the symlink target
+    echo "🔍 Symlink /repo/bin/electron points to: $(readlink -f /repo/bin/electron)" && \
+    # Show file details and permissions
+    ls -la /repo/vendor/electron/dist/electron && \
+    echo "✅ Vendor Electron binary presence verified"
 
 ################################################################################
 # 3 · Detailed Electron verification
@@ -479,6 +488,13 @@ TESTSCRIPT
 # Make sure the script is executable
 RUN chmod +x /repo/scripts/docker-run-tests.sh
 
+# Verify renderer.html and preload.js exist
+RUN test -f /repo/Tangent-main/apps/tangent-electron/__build/bundle/renderer.html || \
+    (echo "❌ CRITICAL ERROR: renderer.html is missing!" && exit 1) && \
+    test -f /repo/Tangent-main/apps/tangent-electron/__build/bundle/preload.js || \
+    (echo "❌ CRITICAL ERROR: preload.js is missing!" && exit 1) && \
+    echo "✅ Both renderer.html and preload.js exist in the bundle directory"
+
 # Add verification script for Electron binary
 COPY --chown=pwuser:pwuser verify_electron.sh /repo/verify_electron.sh
 RUN chmod +x /repo/verify_electron.sh
@@ -492,15 +508,35 @@ RUN set -x && \
     echo "Node version: $(node --version)" && \
     echo "Verification complete."
 
-# Use the script as the entry point
-CMD ["/repo/scripts/docker-run-tests.sh"]
-
-# Optional cache-buster so this layer rebuilds whenever stub_main.js or the
-# repository HEAD changes.  Supply with
-#   docker build --build-arg STUB_HASH=$(git rev-parse HEAD) …
-ARG STUB_HASH=dev
-# Additional cache-buster to force rebuild on every CI run
-ARG CACHE_BUST=0
+# FINAL verification and fix to ensure the Electron binary is the real ELF
+# This is a safety measure in case any previous steps overwrote our symlinks
+RUN set -euxo pipefail && \
+    echo "🔍 FINAL VERIFICATION AND FIX FOR ELECTRON BINARY" && \
+    # Ensure the real binary is in the npm package location
+    if [ -f "/repo/vendor/electron/dist/electron" ]; then \
+        echo "✅ Found source binary at /repo/vendor/electron/dist/electron" && \
+        mkdir -p /repo/node_modules/electron/dist/ && \
+        cp -f /repo/vendor/electron/dist/electron /repo/node_modules/electron/dist/electron && \
+        chmod +x /repo/node_modules/electron/dist/electron && \
+        echo "✅ Copied real ELF binary to npm package location"; \
+    else \
+        echo "❌ Source binary not found at /repo/vendor/electron/dist/electron! This is unexpected."; \
+        exit 1; \
+    fi && \
+    # Force the symlink to point to the real binary
+    mkdir -p /repo/bin && \
+    ln -sf /repo/node_modules/electron/dist/electron /repo/bin/electron && \
+    echo "✅ Reinforced symlink at /repo/bin/electron -> /repo/node_modules/electron/dist/electron" && \
+    # Verify the binary is actually an ELF
+    ELECTRON_FILE_TYPE=$(file -L /repo/bin/electron) && \
+    echo "Binary file type: $ELECTRON_FILE_TYPE" && \
+    if [[ "$ELECTRON_FILE_TYPE" == *"ELF 64-bit"* ]]; then \
+        echo "✅ Electron binary is a proper ELF executable"; \
+    else \
+        echo "❌ Binary exists but is not an ELF executable! Got: $ELECTRON_FILE_TYPE"; \
+        exit 1; \
+    fi && \
+    echo "✅ FINAL VERIFICATION PASSED - Electron binary is ready for Playwright"
 
 # ------------------------------------------------------------------
 # 10 · FINAL stub copy – guarantees the very latest stub_main.js is
@@ -511,3 +547,49 @@ ARG CACHE_BUST=0
 
 COPY Tangent-main/apps/tangent-electron/scripts/stub_main.js\
      Tangent-main/apps/tangent-electron/__build/bundle/main.js
+
+# -----------------------------------------------------------------
+# 11 · FINAL — ABSOLUTELY NOTHING MAY FOLLOW THIS (except ARGs)
+# -----------------------------------------------------------------
+# Final binary installation & permission fix must run as root for chown 4755
+USER root
+
+RUN set -eux; \
+    # 1. make sure the target dir exists even if pnpm hoisted it elsewhere
+    mkdir -p /repo/node_modules/electron/dist && \
+    # 2. copy the real ELF everywhere we can think of
+    for d in $(find /repo/node_modules -path '*/electron/dist' -type d); do \
+        echo "→ installing real binary into $d"; \
+        cp -f /repo/vendor/electron/dist/electron "$d/electron"; \
+        chmod +x "$d/electron"; \
+    done && \
+    # 3. authoritative symlink used by scripts/debugging
+    ln -sf /repo/vendor/electron/dist/electron /repo/bin/electron && \
+    # Fix chrome-sandbox permissions once and for all so Electron never
+    # complains about SUID in either build-time self-tests or Playwright runs.
+    if [ -f /repo/vendor/electron/dist/chrome-sandbox ]; then \
+        chown root:root /repo/vendor/electron/dist/chrome-sandbox && \
+        chmod 4755 /repo/vendor/electron/dist/chrome-sandbox; \
+    fi && \
+    # Propagate the helper into every dist/ directory that holds the main binary
+    for d in $(find /repo/node_modules -path '*/electron/dist' -type d); do \
+        cp -f /repo/vendor/electron/dist/chrome-sandbox "$d/chrome-sandbox"; \
+        chown root:root "$d/chrome-sandbox"; \
+        chmod 4755 "$d/chrome-sandbox"; \
+    done && \
+    # 4. prove it worked
+    file -L /repo/bin/electron && \
+    /repo/bin/electron --no-sandbox --version
+
+# Revert to the non-root user for the runtime container.
+USER pwuser
+
+# Use the script as the entry point
+CMD ["/repo/scripts/docker-run-tests.sh"]
+
+# Optional cache-buster so this layer rebuilds whenever stub_main.js or the
+# repository HEAD changes.  Supply with
+#   docker build --build-arg STUB_HASH=$(git rev-parse HEAD) …
+ARG STUB_HASH=dev
+# Additional cache-buster to force rebuild on every CI run
+ARG CACHE_BUST=0

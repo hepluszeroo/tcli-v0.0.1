@@ -9,6 +9,15 @@ import os from 'os'
 import TangentApp from './TangentApp'
 import { DEFAULT_WORKSPACE } from './pathHelpers'
 
+// Ensure CI never forces the project Electron binary unless explicitly opted
+// in by the workflow.  Some runners accidentally inherit environment
+// variables from previous jobs or repository secrets – that would re-introduce
+// the wrapper problem we just fixed.
+if (process.env.CI && process.env.FORCE_PROJECT_ELECTRON === '1') {
+  console.log('[tangent.ts] CI run detected – unsetting unintended FORCE_PROJECT_ELECTRON');
+  delete process.env.FORCE_PROJECT_ELECTRON;
+}
+
 // Using this here because playwright doesn't want to play nice with ESM imports
 export function wait(time: number = 0): Promise<void> {
 	return new Promise((resolve, reject) => {
@@ -101,18 +110,38 @@ function getElectronExec(): string {
   console.log('[tangent.ts] Platform:', process.platform);
   console.log('[tangent.ts] In Docker:', process.env.PLAYWRIGHT_IN_DOCKER === '1' ? 'Yes' : 'No');
 
-  // In Docker environment, use our guaranteed Electron binary
+  // In Docker environment, point Playwright at the npm Electron CLI wrapper.
   if (process.env.PLAYWRIGHT_IN_DOCKER === '1') {
-    console.log('[tangent.ts] Docker environment detected. Using guaranteed Electron path...');
+    // In Docker prefer the *real executable* shipped inside the electron
+    // package (…/dist/electron).  We attempt a few common patterns before we
+    // surrender to the wrapper (the harness will rewrite it again anyway).  
 
-    // Use the guaranteed path directly for Docker environment
-    return '/repo/bin/electron';
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const cliPath = require.resolve('electron/cli.js');
+    const distPath = path.resolve(path.dirname(cliPath), 'dist', 'electron');
+
+    if (fs.existsSync(distPath)) {
+      console.log('[tangent.ts] Docker environment: resolved electron binary:', distPath);
+      return distPath;
+    }
+
+    console.warn('[tangent.ts] Docker environment: dist/electron not found, falling back to CLI wrapper – electronHarness will attempt rewrite');
+    return cliPath;
   }
 
-  // UPDATED: We no longer use executablePath() as it doesn't exist in Playwright 1.52
+  // If the harness is going to decide which binary to launch (the recommended
+  // path now), we can simply return an *empty string*.  The harness will
+  // detect that and omit `executablePath`, letting Playwright pick its own
+  // vetted Electron.  Only when the developer opts in via
+  // FORCE_PROJECT_ELECTRON=1 do we attempt resolution.
+
+  if (process.env.FORCE_PROJECT_ELECTRON !== '1') {
+    console.log('[tangent.ts] FORCE_PROJECT_ELECTRON not set – defer binary resolution to harness');
+    return '' as unknown as string;
+  }
+
+  // Legacy resolution logic (only used when FORCE_PROJECT_ELECTRON=1)
   try {
-    // Rather than using the non-existent executablePath() method, we'll rely on well-known paths
-    // and our Docker-specific fallbacks which are more reliable anyway
     console.log('[tangent.ts] Playwright executablePath() is not supported in version 1.52, using fallbacks')
 
     // For Docker environments, we've already handled this above
@@ -299,8 +328,11 @@ try {
   throw new Error(`Failed to resolve Electron binary: ${error}`)
 }
 
-// Fail early with a friendly hint when the Electron binary is missing
-if (!fs.existsSync(execPath)) {
+// When execPath is an empty string we intentionally defer to Playwright’s
+// bundled Electron; skip the strict existence check in that case.
+// (getElectronExec returns '' when FORCE_PROJECT_ELECTRON is not set.)
+
+if (execPath && execPath.length > 0 && !fs.existsSync(execPath)) {
   // Try one last fallback for Docker environments
   if (process.env.PLAYWRIGHT_IN_DOCKER === '1') {
     console.error('[tangent.ts] Final attempt to find Electron binary in Docker...')
@@ -335,7 +367,11 @@ if (!fs.existsSync(execPath)) {
 
 const mainEntry = path.join(buildDir, 'bundle', 'main.js')
 
-console.log('[tangent.ts] launching Electron binary:', execPath)
+if (!execPath) {
+  console.log('[tangent.ts] No project Electron binary specified – letting Playwright use its bundled Electron');
+} else {
+  console.log('[tangent.ts] launching Electron binary:', execPath);
+}
 
 const { app: electronApp, child } = await launchElectron({
   electronBinary: execPath,
