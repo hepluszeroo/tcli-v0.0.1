@@ -502,6 +502,14 @@ export async function launchElectron(opts: {
       // ------------------------------------------------------------------
 
       if (!forceProjectElectron) {
+        // CRITICAL FIX: Forcibly delete executablePath to ensure Playwright uses
+        // its own bundled Electron which avoids both the pnpm symlink problem and
+        // the missing-download problem. Playwright will automatically download its
+        // browser at the first call to _electron.launch().
+        if ('executablePath' in launchOptions) {
+          console.log('[electronHarness] Removing executablePath to use Playwright-bundled Electron');
+          delete launchOptions.executablePath;
+        }
         console.log('[electronHarness] Using Playwright-bundled Electron (executablePath omitted). ' +
                     'Set FORCE_PROJECT_ELECTRON=1 to use project binary.');
       } else if (typeof opts.electronBinary === 'string' && fsExists(opts.electronBinary)) {
