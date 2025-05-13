@@ -11,9 +11,8 @@ jobs:
     name: E2E Codex Integration Tests
     strategy:
       matrix:
-        os: [ubuntu-22.04]
-        # Temporarily removed macOS for faster debugging
-        # Will restore once Ubuntu passes
+        os: [ubuntu-22.04, macos-latest]
+        # Re-enabled macOS now that we have a robust Electron binary strategy
     runs-on: ${{ matrix.os }}
     env:
       DEBUG: codex
@@ -88,6 +87,12 @@ jobs:
       - name: Build E2E bundle (macOS only)
         if: runner.os == 'macOS'
         run: pnpm --filter tangent_electron run build:test-e2e
+
+      - name: Install Playwright Electron (macOS only)
+        if: runner.os == 'macOS'
+        run: |
+          echo "Installing Playwright's Electron binary..."
+          npx playwright install electron
 
       - name: Run Codex integration tests
         run: |
