@@ -1,0 +1,25 @@
+{
+  "note_id": "ea2bc83b-4063-4f9b-ae56-d2dbb7ec1856",
+  "entities": [
+    {
+      "id": "e1",
+      "label": "Mock Entity 1",
+      "type": "Concept"
+    },
+    {
+      "id": "e2",
+      "label": "Mock Entity 2",
+      "type": "Concept"
+    }
+  ],
+  "relations": [
+    "related_to"
+  ],
+  "triples": [
+    {
+      "subject": "e1",
+      "predicate": "related_to",
+      "object": "e2"
+    }
+  ]
+}

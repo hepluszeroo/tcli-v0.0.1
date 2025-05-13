@@ -1,0 +1,24 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY pnpm-lock.yaml ./
+
+# Install all dependencies (including dev)
+RUN npm install -g pnpm && \
+    pnpm install
+
+# Copy source code
+COPY . .
+
+# Generate schemas and build the app
+RUN pnpm run build
+
+# Ensure schema files are available for tests
+RUN ls -la src/schemas/
+RUN ls -la dist/schemas/
+
+# The command will be overridden by docker-compose
+CMD ["npm", "run", "test:integration"]

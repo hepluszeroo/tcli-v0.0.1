@@ -1,0 +1,12 @@
+{
+  "note_id": "373ab2a1-d66b-4f22-b534-0beb8ffd8de3",
+  "entities": [
+    {
+      "id": "e1",
+      "label": "This",
+      "type": "Concept"
+    }
+  ],
+  "relations": [],
+  "triples": []
+}

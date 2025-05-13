@@ -1,0 +1,347 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10.10.0
+          run_install: false
+          
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+          
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+            
+      - name: Install dependencies
+        run: pnpm install
+        
+      - name: Run ESLint
+        run: pnpm lint
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10.10.0
+          run_install: false
+          
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+          
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+            
+      - name: Install dependencies
+        run: pnpm install
+        
+      - name: Build
+        run: pnpm run build
+        
+      - name: Run unit tests
+        run: pnpm test
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create persistent volume directory for fragments
+        run: |
+          mkdir -p ./data ./graph_fragments
+          chmod -R 777 ./data ./graph_fragments
+
+      - name: Start NATS and SKB service with Docker Compose
+        run: docker-compose up -d nats skb-service
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10.10.0
+          run_install: false
+          
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+          
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+            
+      - name: Install dependencies
+        run: pnpm install
+        
+      - name: Run integration tests
+        run: pnpm test:integration
+        
+      - name: Service Logs
+        if: always()
+        run: docker-compose logs
+
+      - name: Check fragment files
+        if: always()
+        run: |
+          echo "Checking fragment directories:"
+          ls -la ./data || echo "Data directory not accessible"
+          ls -la ./graph_fragments || echo "Graph fragments directory not accessible"
+
+      - name: Stop containers
+        if: always()
+        run: docker-compose down
+
+  alias-reload-test:
+    name: Alias Map Reload Test
+    runs-on: ubuntu-latest
+    needs: integration-tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10.10.0
+          run_install: false
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Create test directories
+        run: |
+          mkdir -p ./tmp-test-alias
+          chmod -R 777 ./tmp-test-alias
+
+      - name: Run alias reload integration test
+        run: |
+          # Use mock KGGen mode for the test
+          KGGEN_MODE=mock \
+          node --max-old-space-size=4096 \
+            node_modules/.bin/jest \
+            --config=jest.integration.config.js \
+            --testMatch="**/?(*.)alias-reload.test.ts" \
+            --runInBand \
+            --forceExit \
+            --detectOpenHandles \
+            --no-watchman \
+            --testTimeout=180000  # 3 minutes
+
+      - name: Verify test artifacts
+        if: always()
+        run: |
+          find ./tmp-test-alias* -type f -name "*.yml" -or -name "*.json" | xargs ls -la || echo "No test files found"
+
+  load-test:
+    name: Knowledge Graph Load Test
+    runs-on: ubuntu-latest
+    needs: alias-reload-test
+    # Only run on main branch and tags to avoid slowing down PR feedback
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10.10.0
+          run_install: false
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Create test directories
+        run: |
+          mkdir -p ./tmp-test-graph
+          chmod -R 777 ./tmp-test-graph
+
+      - name: Run load test with 5000 notes
+        run: |
+          # Use mock KGGen mode for reproducible tests without API keys
+          KGGEN_MODE=mock \
+          COMPACT_THRESHOLD=200 \
+          COMPACT_MB_LIMIT=1 \
+          node --max-old-space-size=4096 \
+            node_modules/.bin/jest \
+            --config=jest.integration.config.js \
+            -t "Load test" \
+            --runInBand \
+            --forceExit \
+            --detectOpenHandles
+
+      - name: Verify test artifacts
+        if: always()
+        run: |
+          du -h ./tmp-test-graph || echo "Test directory not found"
+          ls -la ./tmp-test-graph || echo "Test directory not accessible"
+
+  build-image:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    # Only require load-test and alias-reload-test for main branch and tag builds
+    needs: >-
+      ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+        && fromJSON('["lint", "unit-tests", "integration-tests", "alias-reload-test", "load-test"]')
+        || fromJSON('["lint", "unit-tests", "integration-tests", "alias-reload-test"]') }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: ghcr.io/${{ github.repository_owner }}/skb-service:${{ github.sha }}
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          
+      - name: Test image
+        run: |
+          docker run --rm ghcr.io/${{ github.repository_owner }}/skb-service:${{ github.sha }} --version || echo "No version command, but image runs"
+      
+      - name: Check image size
+        run: |
+          IMAGE_SIZE=$(docker images ghcr.io/${{ github.repository_owner }}/skb-service:${{ github.sha }} --format "{{.Size}}")
+          echo "Image size: $IMAGE_SIZE"
+          
+  push-image:
+    name: Push Docker Image
+    runs-on: ubuntu-latest
+    needs: build-image
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/skb-service
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=sha,format=short
+            
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

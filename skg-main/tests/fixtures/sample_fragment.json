@@ -1,0 +1,42 @@
+{
+  "note_id": "123e4567-e89b-12d3-a456-426614174000",
+  "entities": [
+    {
+      "id": "entity1",
+      "label": "TypeScript",
+      "type": "Technology"
+    },
+    {
+      "id": "entity2",
+      "label": "JavaScript",
+      "type": "Technology"
+    },
+    {
+      "id": "entity3",
+      "label": "Web Development",
+      "type": "Domain"
+    }
+  ],
+  "relations": [
+    "is_superset_of",
+    "is_used_in",
+    "extends"
+  ],
+  "triples": [
+    {
+      "subject": "entity1",
+      "predicate": "is_superset_of",
+      "object": "entity2"
+    },
+    {
+      "subject": "entity1",
+      "predicate": "is_used_in",
+      "object": "entity3"
+    },
+    {
+      "subject": "entity2",
+      "predicate": "is_used_in",
+      "object": "entity3"
+    }
+  ]
+}
