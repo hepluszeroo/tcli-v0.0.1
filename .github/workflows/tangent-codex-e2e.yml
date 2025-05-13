@@ -88,8 +88,7 @@ jobs:
         if: runner.os == 'macOS'
         run: pnpm --filter tangent_electron run build:test-e2e
 
-      - name: Install Playwright Electron (macOS only)
-        if: runner.os == 'macOS'
+      - name: Install Playwright Electron
         run: |
           echo "Installing Playwright's Electron binary..."
           npx playwright install electron

@@ -492,32 +492,29 @@ export async function launchElectron(opts: {
       // Docker image is built such that the path is guaranteed to be valid.
 
       // -------------------------------------------------------------------
-      // Bullet-proof approach for Electron binary resolution
+      // Minimal, stable fix for Electron binary resolution
       // -------------------------------------------------------------------
-      const runningInDocker = process.env.PLAYWRIGHT_IN_DOCKER === '1';
+      // Only use the explicitly provided binary when FORCE_PROJECT_ELECTRON=1
+      // Otherwise, let Playwright handle resolution to ensure we get the pre-patched
+      // binary from Playwright's cache that works in restricted environments
+      // -------------------------------------------------------------------
 
-      if (runningInDocker) {
-        const dockerElectronPath = '/repo/vendor/electron/dist/electron';
-        launchOptions.executablePath = dockerElectronPath;
-        console.log(`[electronHarness] Docker: using vendor Electron binary: ${dockerElectronPath}`);
+      const forceProjectElectron = process.env.FORCE_PROJECT_ELECTRON === '1';
 
-        // Verify the binary exists and is executable
-        if (fsExists(dockerElectronPath)) {
-          try {
-            fs.chmodSync(dockerElectronPath, 0o755);
-            console.log('[electronHarness] Ensured Docker Electron binary is executable');
-          } catch (chmodErr) {
-            console.warn('[electronHarness] Could not make Docker Electron binary executable:', chmodErr);
-          }
-        } else {
-          console.error(`[electronHarness] ERROR: Docker vendor Electron not found at ${dockerElectronPath}`);
-        }
+      if (forceProjectElectron) {
+        launchOptions.executablePath = opts.electronBinary;   // caller takes the risk
+        console.log(`[electronHarness] FORCE_PROJECT_ELECTRON=1 – using project binary: ${opts.electronBinary}`);
       } else {
-        // Non-Docker - remove any executablePath so the wrapper can find Playwright's cached Electron
+        // make 100% sure we do NOT pass any path
         if ('executablePath' in launchOptions) {
           delete launchOptions.executablePath;
         }
-        console.log('[electronHarness] Native run: letting wrapper use Playwright cache');
+        console.log('[electronHarness] Using Playwright-managed Electron (wrapper decides).');
+      }
+
+      // Safety rail to prevent future regressions
+      if (!forceProjectElectron && launchOptions.executablePath) {
+        throw new Error('Unexpected executablePath – harness must let wrapper decide');
       }
 
       const app = await _electron.launch(launchOptions);
