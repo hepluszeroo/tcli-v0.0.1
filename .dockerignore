@@ -11,8 +11,13 @@
 dev_log
 test-results
 **/dist
+!Tangent-main/vendor/electron/dist/**
+# keep the build scripts needed to compile the E2E bundle inside the image
+!Tangent-main/apps/tangent-electron/build/**
 **/__build
-**/build
+# Allow build scripts for tangent_electron; other large build dirs can stay
+# excluded by more specific rules if needed.
+# **/build
 **/*.tsbuildinfo
 
 # Logs
@@ -38,3 +43,9 @@ dev_settings.json
 # Redundant lock files when using pnpm
 package-lock.json
 yarn.lock
+
+# Python virtual environments and runtime graph data
+**/venv*/
+venv*/
+data/
+*/data/

@@ -210,6 +210,7 @@ RUN set -euxo pipefail && \
 
 RUN set -euxo pipefail && \
     echo "🔗  Ensuring /repo/bin/electron symlink targets vendor ELF" && \
+    mkdir -p /repo/bin && \
     ln -sf /repo/vendor/electron/dist/electron /repo/bin/electron && \
     file -L /repo/bin/electron
 
@@ -311,6 +312,26 @@ RUN set -euxo pipefail && \
     echo "==== Electron verification complete ===="
 
 ################################################################################
+# 4 · Rebuild the integration-test bundle so the latest TypeScript sources
+#     (including electronHarness.ts) are what the container executes.
+################################################################################
+
+# Any change to the harness or test helpers requires a new JS bundle under
+# apps/tangent-electron/__build.  Re-compile it inside the image so we never
+# ship a stale bundle even if the host checkout forgot to run the build step.
+
+RUN set -euxo pipefail && \
+    echo "🛠️  Re-building tangent-electron E2E bundle…" && \
+    pnpm --filter tangent_electron run build:test-e2e && \
+    echo "✅ E2E bundle built"
+
+# Ensure renderer.html is copied to the bundle directory
+RUN mkdir -p /repo/Tangent-main/apps/tangent-electron/__build/bundle && \
+    cp /repo/Tangent-main/apps/tangent-electron/scripts/stub_renderer.html \
+       /repo/Tangent-main/apps/tangent-electron/__build/bundle/renderer.html && \
+    echo "✅ Copied renderer.html to bundle"
+
+################################################################################
 # 4 · Create symlinks and guaranteed paths for Electron binary
 ################################################################################
 # Symlink has already been created in an earlier step - this is just a sanity check
@@ -330,11 +351,16 @@ RUN set -euxo pipefail &&\
 USER root
 
 # Install Playwright browsers and dependencies
-RUN echo "Installing Playwright browsers and dependencies..." &&\
-    # Remove 'electron' from the installation targets as it's not a valid Playwright browser
-    npx playwright install --with-deps chromium firefox webkit &&\
-    echo "Smoke-testing Playwright CLI..." &&\
-    npx playwright --version
+# ------------------------------------------------------------------
+# The base Playwright image already ships with all three browser engines
+# pre-installed.  Re-running `playwright install` inside QEMU (when building
+# on Apple-silicon with `--platform linux/amd64`) occasionally crashes with
+# "Illegal instruction".  Skip the redundant step.
+# ------------------------------------------------------------------
+# RUN echo "Installing Playwright browsers and dependencies..." && \
+#     npx playwright install --with-deps chromium firefox webkit && \
+#     echo "Smoke-testing Playwright CLI..." && \
+#     npx playwright --version
 
 ################################################################################
 # 6 · Prepare integration test workspace
@@ -352,23 +378,25 @@ RUN mkdir -p /home/pwuser/.config/Tangent &&\
     chown -R pwuser:pwuser /home/pwuser/.config/Tangent &&\
     echo "Global settings directory created with Codex integration enabled"
 
-################################################################################
-# 7 · Copy stub files for tests
-################################################################################
-USER pwuser
-
-# Copy stub files for tests
-RUN set -e &&\
-    mkdir -p /repo/Tangent-main/apps/tangent-electron/__build/bundle &&\
-    cp /repo/Tangent-main/apps/tangent-electron/scripts/stub_preload.js \
-       /repo/Tangent-main/apps/tangent-electron/__build/bundle/preload.js &&\
-    cp /repo/Tangent-main/apps/tangent-electron/scripts/stub_main.js \
-       /repo/Tangent-main/apps/tangent-electron/__build/bundle/main.js &&\
-    cp /repo/Tangent-main/apps/tangent-electron/scripts/stub_renderer.html \
-       /repo/Tangent-main/apps/tangent-electron/__build/bundle/renderer.html &&\
-    # Empty placeholder for codex_process_manager
-    echo "module.exports = {};" > \
-       /repo/Tangent-main/apps/tangent-electron/__build/bundle/codex_process_manager.js
+# ---------------------------------------------------------------------------
+# 7 · Copy stub files for tests (DISABLED)
+# ---------------------------------------------------------------------------
+# The E2E bundle is now rebuilt in step 4 and already contains the latest
+# stub_main/preload/renderer files.  Copying older scripts here would overwrite
+# fresh code (e.g. the synthetic DevTools banner) and break Playwright's
+# launch logic.  This entire block is therefore commented out.
+#
+# USER pwuser
+# RUN set -e && \
+#     mkdir -p /repo/Tangent-main/apps/tangent-electron/__build/bundle && \
+#     cp /repo/Tangent-main/apps/tangent-electron/scripts/stub_preload.js \
+#        /repo/Tangent-main/apps/tangent-electron/__build/bundle/preload.js && \
+#     cp /repo/Tangent-main/apps/tangent-electron/scripts/stub_main.js \
+#        /repo/Tangent-main/apps/tangent-electron/__build/bundle/main.js && \
+#     cp /repo/Tangent-main/apps/tangent-electron/scripts/stub_renderer.html \
+#        /repo/Tangent-main/apps/tangent-electron/__build/bundle/renderer.html && \
+#     echo "module.exports = {};" > \
+#        /repo/Tangent-main/apps/tangent-electron/__build/bundle/codex_process_manager.js
 
 ################################################################################
 # 8 · Create debug script
@@ -545,8 +573,11 @@ RUN set -euxo pipefail && \
 #     subsequent layers are cached.
 # ------------------------------------------------------------------
 
-COPY Tangent-main/apps/tangent-electron/scripts/stub_main.js\
-     Tangent-main/apps/tangent-electron/__build/bundle/main.js
+# The E2E bundle is rebuilt in step 4; no need to overwrite main.js with an
+# older stub.  This COPY previously masked freshly compiled changes (e.g.
+# the synthetic DevTools banner).
+# COPY Tangent-main/apps/tangent-electron/scripts/stub_main.js \
+#      Tangent-main/apps/tangent-electron/__build/bundle/main.js
 
 # -----------------------------------------------------------------
 # 11 · FINAL — ABSOLUTELY NOTHING MAY FOLLOW THIS (except ARGs)
@@ -580,6 +611,25 @@ RUN set -eux; \
     # 4. prove it worked
     file -L /repo/bin/electron && \
     /repo/bin/electron --no-sandbox --version
+
+# Pre-populate /tmp/electron-dist for Playwright's sandboxed execution
+RUN mkdir -p /tmp/electron-dist && \
+    # Copy all contents of the Electron dist directory.
+    # -p preserves mode, ownership, timestamps. -r for recursive (though dist/* might not need -r if no subdirs directly in dist are essential, but safer with it).
+    # Using cp -a is often a good shorthand for -rp. Let's use cp -a for simplicity if it implies -R or -r.
+    # cp -a is equivalent to -dR --preserve=all. -d is --no-dereference --preserve=links.
+    # Let's be explicit: cp -rp /repo/vendor/electron/dist/* /tmp/electron-dist/
+    cp -rp /repo/vendor/electron/dist/* /tmp/electron-dist/ && \
+    # Ensure correct ownership and SUID for chrome-sandbox.
+    # This overrides the ownership from cp -rp if it was pwuser.
+    chown root:root /tmp/electron-dist/chrome-sandbox && \
+    chmod 4755 /tmp/electron-dist/chrome-sandbox && \
+    # Ensure the electron binary itself is executable.
+    # If cp -rp set it from source (which should be executable), this is redundant but safe.
+    chmod +x /tmp/electron-dist/electron && \
+    # All other files copied by cp -rp should retain pwuser ownership and appropriate modes
+    # from the original /repo/vendor/electron/dist location.
+    echo "✅ Pre-populated /tmp/electron-dist with full Electron dist contents and SUID chrome-sandbox"
 
 # Revert to the non-root user for the runtime container.
 USER pwuser
