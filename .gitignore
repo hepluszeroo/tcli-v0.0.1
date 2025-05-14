@@ -34,6 +34,20 @@ dist/
 **/.next/
 .history/
 
+# ──────────────────────────────────────────────────────────────
+# Python virtual-envs & generated data
+# ──────────────────────────────────────────────────────────────
+# Local KGGen or tooling virtual-envs sometimes end up inside the
+# repo (e.g. `skg-main/venv-kggen/`).  They contain thousands of
+# site-package files and should never be committed.
+venv*/
+*/venv*/
+
+# Unified graph / fragment output written by the service during
+# tests or local runs.  Keep it out of version control.
+data/
+*/data/
+
 # Submodules - these are separate git repositories
 # But exclude the specific files we modified
 Tangent-main/*
@@ -124,7 +138,7 @@ codex-main/
 # scripts/verify-dark-launch.js
 
 # Documentation and reports
-dev_log/
+# dev_log/ (commented out to allow tracking)
 
 # GitHub workflow files - Include specific ones
 .github/workflows/*
@@ -133,3 +147,8 @@ dev_log/
 !.github/workflows/dark-launch-verify.yml
 !.github/workflows/tangent-codex-e2e.yml
 !.github/workflows/codex-e2e.yml
+# Additional ignores for architecture bypass
+/tmp/
+*.bak
+/cleanup_temp/
+EOF < /dev/null
