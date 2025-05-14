@@ -1,0 +1,51 @@
+# Node modules and caches
+**/node_modules
+**/.pnpm-store
+
+# Source control
+.git
+.gitignore
+.github
+
+# Development artifacts
+dev_log
+test-results
+**/dist
+!Tangent-main/vendor/electron/dist/**
+# keep the build scripts needed to compile the E2E bundle inside the image
+!Tangent-main/apps/tangent-electron/build/**
+**/__build
+# Allow build scripts for tangent_electron; other large build dirs can stay
+# excluded by more specific rules if needed.
+# **/build
+**/*.tsbuildinfo
+
+# Logs
+**/*.log
+**/logs
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+
+# System files
+.DS_Store
+**/Thumbs.db
+**/.env
+
+# Local dev config
+dev_settings.json
+
+# Large files that aren't needed for CI
+**/*.mp4
+**/*.mov
+**/*.avi
+
+# Redundant lock files when using pnpm
+package-lock.json
+yarn.lock
+
+# Python virtual environments and runtime graph data
+**/venv*/
+venv*/
+data/
+*/data/

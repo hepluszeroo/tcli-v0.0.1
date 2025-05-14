@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  nats:
+    image: nats:2.10-alpine
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    command: "--jetstream --http_port 8222"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8222/healthz"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  skb-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      nats:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=development
+      - BROKER_URL=nats://nats:4222
+      - LOG_LEVEL=debug
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/data/skb
+      - ./graph_fragments:/data/skb/graph_fragments
+
+  integration-tester:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    depends_on:
+      nats:
+        condition: service_healthy
+      skb-service:
+        condition: service_started
+    environment:
+      - NODE_ENV=test
+      - BROKER_URL=nats://nats:4222
+    command: npm run test:integration

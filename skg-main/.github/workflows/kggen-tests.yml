@@ -1,0 +1,60 @@
+name: KGGen Integration Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  kggen-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    env:
+      KGGEN_MODE: real  # Critical - must be real to ensure no mock fallback
+      KGGEN_REAL_TESTS: true
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Node.js 20.x
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20.x
+          cache: 'npm'
+      
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+      
+      - name: Setup KGGen environment
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -c pip-constraints.txt kg-gen==0.4.3
+          # Create directory for kg_gen_cli.py if it doesn't exist
+          mkdir -p scripts
+
+          # Create and chmod kg_gen_cli.py
+          cp ${{ github.workspace }}/scripts/kg_gen_cli.py scripts/
+          chmod +x scripts/kg_gen_cli.py
+
+      - name: Verify KGGen installation
+        run: |
+          python -c "from kg_gen.kg_gen import KGGen; print('KGGen import successful')"
+          python scripts/kg_gen_cli.py --help
+      
+      - name: Install Node.js dependencies
+        run: npm ci
+      
+      - name: Build project
+        run: npm run build
+      
+      - name: Run KGGen specific integration tests
+        run: |
+          npm test -- -t "@slow" --runInBand --forceExit
+        env:
+          KGGEN_BIN: python
+          KGGEN_SCRIPT: ${{ github.workspace }}/scripts/kg_gen_cli.py

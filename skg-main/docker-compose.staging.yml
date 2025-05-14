@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  nats:
+    image: nats:2.10-alpine
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    command: "--jetstream --http_port 8222"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8222/healthz"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+    volumes:
+      - nats-data:/data
+    networks:
+      - skb-network
+
+  skb-service:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-org}/skb-service:${SKB_VERSION:-latest}
+    depends_on:
+      nats:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
+      - BROKER_URL=nats://nats:4222
+      - LOG_LEVEL=info
+      - FEATURE_FLAG_ENABLED=${FEATURE_FLAG_ENABLED:-true}
+      - HEALTH_PORT=3000
+      - SHUTDOWN_TIMEOUT=10000
+      - MAX_CONTENT_SIZE_BYTES=262144
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:3000/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - skb-network
+
+volumes:
+  nats-data:
+    driver: local
+
+networks:
+  skb-network:
+    driver: bridge

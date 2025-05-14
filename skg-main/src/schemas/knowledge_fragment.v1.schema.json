@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "KnowledgeFragment",
+  "type": "object",
+  "required": ["note_id", "entities", "relations", "triples"],
+  "properties": {
+    "note_id": { 
+      "type": "string", 
+      "format": "uuid",
+      "description": "UUID of the note this fragment belongs to"
+    },
+    
+    "entities": {
+      "type": "array",
+      "description": "List of entities extracted from the note",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "type"],
+        "properties": {
+          "id": { 
+            "type": "string",
+            "description": "Unique identifier for the entity within this fragment"
+          },
+          "label": { 
+            "type": "string",
+            "description": "Human-readable label for the entity"
+          },
+          "type": { 
+            "type": "string",
+            "description": "Type classification of the entity (e.g., Person, Organization, Concept)"
+          }
+        }
+      }
+    },
+    
+    "relations": {
+      "type": "array",
+      "description": "List of relation types used in the knowledge graph",
+      "items": { 
+        "type": "string" 
+      }
+    },
+    
+    "triples": {
+      "type": "array",
+      "description": "List of subject-predicate-object statements forming the knowledge graph",
+      "items": {
+        "type": "object",
+        "required": ["subject", "predicate", "object"],
+        "properties": {
+          "subject": { 
+            "type": "string",
+            "description": "Subject entity ID"
+          },
+          "predicate": { 
+            "type": "string",
+            "description": "Relation type connecting subject to object"
+          },
+          "object": { 
+            "type": "string",
+            "description": "Object entity ID"
+          }
+        }
+      }
+    }
+  }
+}

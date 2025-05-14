@@ -1,0 +1,82 @@
+name: Alias Map Reload Test
+
+on:
+  push:
+    branches: [ main, feat/skg/m3 ]
+    paths:
+      - 'src/graph-store/**'
+      - 'src/health/**'
+      - 'src/metrics/**'
+      - 'src/worker/**'
+      - 'tests/integration/alias-reload.test.ts'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'src/graph-store/**'
+      - 'src/health/**'
+      - 'src/metrics/**'
+      - 'src/worker/**'
+      - 'tests/integration/alias-reload.test.ts'
+
+jobs:
+  alias-reload-test:
+    name: Test Alias Map Reload
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10.10.0
+          run_install: false
+          
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+          
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+            
+      - name: Install dependencies
+        run: pnpm install
+        
+      - name: Build
+        run: pnpm run build
+      
+      - name: Create test directories
+        run: |
+          mkdir -p ./tmp-test-alias
+          chmod -R 777 ./tmp-test-alias
+      
+      - name: Run alias reload integration test
+        run: |
+          # Use mock KGGen mode for the test
+          KGGEN_MODE=mock \
+          node --max-old-space-size=4096 \
+            node_modules/.bin/jest \
+            --config=jest.integration.config.js \
+            --testMatch="**/?(*.)alias-reload.test.ts" \
+            --runInBand \
+            --forceExit \
+            --detectOpenHandles \
+            --no-watchman \
+            --testTimeout=180000  # 3 minutes
+      
+      - name: Verify test artifacts
+        if: always()
+        run: |
+          find ./tmp-test-alias* -type f -name "*.yml" -or -name "*.json" | xargs ls -la || echo "No test files found"

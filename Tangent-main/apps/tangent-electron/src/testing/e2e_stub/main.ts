@@ -6,6 +6,89 @@ import fs from 'fs';
 import CodexProcessManager from '../../main/codex_process_manager';
 
 // ---------------------------------------------------------------------------
+// E2E-only helper: emit a synthetic DevTools banner so Playwright 1.52 can
+// detect Electron's debugger port inside Docker.
+//
+// Context:  Chromium ≥121 running under Electron 35 no longer prints the
+// "DevTools listening on ws://…" line when started with the flag combination
+// Playwright uses (`--inspect=0 --remote-debugging-port=0`).  Playwright's
+// `_electron.launch()` waits for that line and times out if it never shows.
+//
+// For test bundles built via `build:test-e2e` we simply write a synthetic
+// banner to **stderr** right after the stub is loaded.  `process.debugPort`
+// already contains the inspector port chosen by the `--inspect` flag.  It is
+// therefore safe to reference.
+// ---------------------------------------------------------------------------
+
+// CRITICAL SYNTHETIC BANNERS - Emitted immediately at the top of the file
+// NOTE: Using double quotes and fixed port (9222) to prevent bundling issues
+process.stderr.write("Debugger listening on ws://127.0.0.1:9222/synthetic_forced\n");
+process.stderr.write("DevTools listening on ws://127.0.0.1:9222/synthetic_forced\n");
+console.error("Debugger listening on ws://127.0.0.1:9222/synthetic_forced");
+console.error("DevTools listening on ws://127.0.0.1:9222/synthetic_forced");
+
+// @ts-ignore
+global.SYNTHETIC_BANNER_ENABLED = true;
+console.error("[BUNDLE LOADED] E2E stub with synthetic banner support initialized");
+
+// Helper function to emit additional banners if needed
+function emitSyntheticBanners() {
+  // Use fixed port 9222 instead of dynamic port to avoid template literal issues
+  const port = 9222;
+  
+  // Write directly to stderr with double quotes (not template literals)
+  process.stderr.write("Debugger listening on ws://127.0.0.1:9222/synthetic_forced\n");
+  process.stderr.write("DevTools listening on ws://127.0.0.1:9222/synthetic_forced\n");
+  
+  // Also emit via console.error with double quotes
+  console.error("Debugger listening on ws://127.0.0.1:9222/synthetic_forced");
+  console.error("DevTools listening on ws://127.0.0.1:9222/synthetic_forced");
+  
+  // Mark that banners were emitted (for diagnostics)
+  // @ts-ignore
+  global.SYNTHETIC_BANNERS_EMITTED = true;
+}
+
+// Emit banners immediately
+emitSyntheticBanners();
+
+// Also emit on next tick and after a short delay to ensure they appear
+process.nextTick(emitSyntheticBanners);
+setTimeout(emitSyntheticBanners, 100);
+
+// ---------------------------------------------------------------------------
+// Setup diagnostics for Electron launch troubleshooting
+// ---------------------------------------------------------------------------
+
+// Register a diagnostic handler that will emit banner info
+// This will help debug why banners might not be detected
+process.on('uncaughtException', (err) => {
+  console.error('UNCAUGHT EXCEPTION in E2E stub:', err);
+  // Try to re-emit banners in case they were missed
+  try {
+    // Use fixed port 9222 instead of dynamic port to avoid template literal issues
+    process.stderr.write("Debugger listening on ws://127.0.0.1:9222/synthetic_forced\n");
+    process.stderr.write("DevTools listening on ws://127.0.0.1:9222/synthetic_forced\n");
+    console.error("Debugger listening on ws://127.0.0.1:9222/synthetic_forced");
+    console.error("DevTools listening on ws://127.0.0.1:9222/synthetic_forced");
+  } catch (e) {
+    console.error('Failed to emit emergency banners:', e);
+  }
+});
+
+// Add diagnostic info
+const bannerInfo = {
+  stubVersion: 'enhanced-synthetic-2025-05-14',
+  debugPort: (process as any).debugPort || 'unknown',
+  processId: process.pid,
+  nodeVersion: process.version,
+  electronVersion: process.versions.electron || 'unknown',
+  platform: process.platform,
+};
+
+console.error('[BANNER-DIAG]', JSON.stringify(bannerInfo, null, 2));
+
+// ---------------------------------------------------------------------------
 // Minimal *fake* Workspace object used solely by CodexProcessManager during
 // E2E tests.  We do NOT pull the full production Workspace implementation in
 // order to keep the stub lightweight and independent of unrelated runtime

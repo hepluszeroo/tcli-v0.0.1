@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NoteIndexed",
+  "description": "Acknowledgement that a note has been processed by the SKB service",
+  "type": "object",
+  "required": ["note_id", "status", "event_id", "correlation_id"],
+  "properties": {
+    "note_id": {
+      "type": "string",
+      "description": "Unique identifier for the note that was processed",
+      "format": "uuid"
+    },
+    "event_id": {
+      "type": "string",
+      "description": "Unique identifier for this event",
+      "format": "uuid"
+    },
+    "correlation_id": {
+      "type": "string",
+      "description": "ID of the original new_note event this is acknowledging",
+      "format": "uuid"
+    },
+    "status": {
+      "type": "string",
+      "description": "Status of the note indexing operation",
+      "enum": ["RECEIVED", "VALIDATION_FAILED", "INTERNAL_ERROR_M1"]
+    },
+    "version": {
+      "type": "string",
+      "description": "Version of the SKB service that processed the note",
+      "default": "0.1.0"
+    },
+    "error_msg": {
+      "type": "string",
+      "description": "Optional error message if processing failed"
+    },
+    "timestamp": {
+      "type": "string",
+      "description": "ISO 8601 timestamp of when the note was indexed",
+      "format": "date-time"
+    }
+  }
+}

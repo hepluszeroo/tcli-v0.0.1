@@ -22,13 +22,18 @@ else
 fi
 
 echo "3. File info:"
-FILE_TYPE=$(file /repo/bin/electron)
+# We must follow symlinks when checking the binary type. Using plain `file` on
+# the symlink itself only reports "symbolic link to ..." which fails the ELF
+# pattern match even though the target is correct.  `file -L` dereferences.
+
+FILE_TYPE=$(file -L /repo/bin/electron)
 echo "   $FILE_TYPE"
-if [[ "$FILE_TYPE" == *"ELF 64-bit LSB executable"* ]]; then
-  echo "✅ Electron binary is a proper ELF executable"
+
+if [[ "$FILE_TYPE" == *"ELF 64-bit"* ]]; then
+  echo "✅ Electron binary is a proper ELF executable (target inspected)"
 else
   echo "❌ Electron binary is NOT an ELF executable!"
-  echo "   This suggests the Electron installation failed to download the actual binary"
+  echo "   This suggests the Electron installation failed to download the actual binary or the symlink target is wrong"
   exit 1
 fi
 
@@ -40,7 +45,7 @@ SYMLINK_TARGET=$(readlink -f /repo/bin/electron)
 echo "   $SYMLINK_TARGET"
 
 echo "6. Version check:"
-ELECTRON_VERSION=$(/repo/bin/electron --version 2>/dev/null || echo "Failed with code: $?")
+ELECTRON_VERSION=$(/repo/bin/electron --no-sandbox --version 2>/dev/null || echo "Failed with code: $?")
 echo "   $ELECTRON_VERSION"
 if [[ "$ELECTRON_VERSION" == v35* ]]; then
   echo "✅ Electron version $ELECTRON_VERSION is compatible with Node $NODE_VER"

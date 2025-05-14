@@ -1,0 +1,77 @@
+# Stage 1: Build
+FROM node:20-alpine AS build
+
+# Install Python and pip for KGGen
+RUN apk add --no-cache python3 py3-pip
+
+# Set up working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY tsconfig.json ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy source code
+COPY src/ ./src/
+COPY scripts/ ./scripts/
+
+# Copy constraints file
+COPY pip-constraints.txt ./
+# Install KGGen with pinned dependencies
+RUN pip install --no-cache-dir -c pip-constraints.txt kg-gen==0.4.3
+
+# Make our KGGen CLI script executable
+RUN chmod +x scripts/kg_gen_cli.py
+
+# Build the TypeScript code
+RUN npm run build
+
+# Stage 2: Production
+FROM node:20-alpine
+
+# Install Python for KGGen
+RUN apk add --no-cache python3 py3-pip
+
+# Set up working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install only production dependencies
+RUN npm ci --only=production
+
+# Copy built code and scripts
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/scripts ./scripts
+COPY --from=build /usr/lib/python3* /usr/lib/
+
+# Create data directory for fragments
+RUN mkdir -p /data/skb/graph_fragments && \
+    chmod -R 777 /data
+
+# Set environment variables
+ENV NODE_ENV=production \
+    FRAGMENT_DIR=/data/skb/graph_fragments \
+    KGGEN_BIN=python3 \
+    KGGEN_SCRIPT=/app/scripts/kg_gen_cli.py \
+    KGGEN_MODE=real \  # Force real mode - never use mock in production
+    KGGEN_TIMEOUT=120000
+
+# Copy constraints file
+COPY pip-constraints.txt ./
+# Install KGGen with pinned dependencies
+RUN pip install --no-cache-dir -c pip-constraints.txt kg-gen==0.4.3
+
+# Test KGGen installation and CLI
+RUN python3 -c "from kg_gen.kg_gen import KGGen; print('KGGen import successful')" && \
+    python3 /app/scripts/kg_gen_cli.py --help
+
+# Expose port
+EXPOSE 3000
+
+# Start the service
+CMD ["node", "dist/index.js"]

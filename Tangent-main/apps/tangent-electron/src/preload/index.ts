@@ -1,16 +1,20 @@
 // DEBUG breadcrumb – proves compiled preload actually loads (wrapped so it
 // can stay in production bundle harmlessly).
 // Always log this message during integration tests to confirm preload execution
-if (process.env.DEBUG?.includes('preload') || process.env.INTEGRATION_TEST === '1') {
+if (process.env.DEBUG?.includes('preload') || process.env.INTEGRATION_TEST === '1' || process.env.PLAYWRIGHT_IN_DOCKER === '1') {
   // eslint-disable-next-line no-console
-  console.log('[preload] TOP-OF-FILE reached');
-  
+  console.log('[PRELOAD] ✅ PRELOAD SCRIPT LOADED SUCCESSFULLY');
+
   // Process environment check for integration test
-  console.log('[preload] INTEGRATION_TEST =', process.env.INTEGRATION_TEST);
-  console.log('[preload] DEBUG =', process.env.DEBUG);
-  
+  console.log('[PRELOAD] INTEGRATION_TEST =', process.env.INTEGRATION_TEST);
+  console.log('[PRELOAD] PLAYWRIGHT_IN_DOCKER =', process.env.PLAYWRIGHT_IN_DOCKER);
+  console.log('[PRELOAD] DEBUG =', process.env.DEBUG);
+
   // Log filesystem path to help debug path issues
-  console.log('[preload] __filename =', __filename);
+  console.log('[PRELOAD] __filename =', __filename);
+
+  // Log window API status
+  console.log('[PRELOAD] window.api will be exposed via contextBridge');
 }
 
 import type WindowApi from 'common/WindowApi'
@@ -461,3 +465,9 @@ ipcRenderer.on(CodexChannel.Message, (_e, msg: CodexMessage) => {
     (window as any).__pendingCodexMsgs.push(msg)
   }
 })
+
+// Add a final message to confirm preload script completed
+if (process.env.DEBUG?.includes('preload') || process.env.INTEGRATION_TEST === '1' || process.env.PLAYWRIGHT_IN_DOCKER === '1') {
+  // eslint-disable-next-line no-console
+  console.log('[PRELOAD] 🏁 PRELOAD SCRIPT EXECUTION COMPLETED - window.api is now exposed');
+}

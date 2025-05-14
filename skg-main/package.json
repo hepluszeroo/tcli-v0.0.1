@@ -1,0 +1,74 @@
+{
+  "name": "skb-service",
+  "version": "0.3.1-beta",
+  "description": "Sorting Knowledge Base Service",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "npm run gen:schema && tsc",
+    "lint": "eslint src --ext .ts",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:integration": "jest --config=jest.integration.config.js",
+    "test:kggen": "KGGEN_MODE=real KGGEN_REAL_TESTS=true jest -t \"@slow\" --runInBand",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "setup:kggen": "./scripts/setup-kggen-env.sh",
+    "setup:kggen:external": "./scripts/setup-external-venv.sh",
+    "cleanup": "./scripts/cleanup-repo.sh",
+    "validate:schema": "node scripts/validate-schemas.js",
+    "gen:schema": "npm run validate:schema && node scripts/generate-types.js",
+    "prepare": "husky",
+    "docker:test": "docker-compose up --build --abort-on-container-exit integration-tester",
+    "verify:kggen": "python -c \"from kg_gen.kg_gen import KGGen; print('KGGen import successful')\""
+  },
+  "keywords": [
+    "skb",
+    "knowledge-base",
+    "microservice"
+  ],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.10.0",
+  "lint-staged": {
+    "src/**/*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "src/**/*.json": [
+      "prettier --write"
+    ]
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^2.1.1",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "nats": "^2.29.3",
+    "pino": "^9.6.0",
+    "pino-pretty": "^13.0.0",
+    "prom-client": "^15.0.0",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/dotenv": "^8.2.3",
+    "@types/express": "^5.0.1",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.15.17",
+    "@types/uuid": "^10.0.0",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "ajv-cli": "^5.0.0",
+    "eslint": "^9.26.0",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-prettier": "^5.4.0",
+    "husky": "^9.1.7",
+    "jest": "^29.7.0",
+    "json-schema-to-typescript": "^15.0.4",
+    "lint-staged": "^15.5.1",
+    "prettier": "^3.5.3",
+    "ts-jest": "^29.3.2",
+    "typescript": "^5.8.3"
+  }
+}
